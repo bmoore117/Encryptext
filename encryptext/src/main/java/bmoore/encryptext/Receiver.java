@@ -12,7 +12,7 @@ public class Receiver extends BroadcastReceiver
 		Bundle b = intent.getExtras();
 		if (b != null)
 		{
-			Intent localIntent = new Intent(ReceiverSvc.class.getName());
+			Intent localIntent = new Intent(c, ReceiverSvc.class);
 			localIntent.putExtra("pdus", b);
 			c.startService(localIntent);
 		}

@@ -17,7 +17,6 @@ import java.security.SecureRandom;
 import java.security.UnrecoverableEntryException;
 import java.security.cert.Certificate;
 import java.security.spec.ECGenParameterSpec;
-import java.security.spec.EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.TreeMap;
@@ -44,8 +43,8 @@ public class Cryptor
 
     private KeyStore secretKeyDB, publicKeyDB;
 
-    public static final char[] PASSWORD = "3q498tyakjgDD[;*DF".toCharArray(); //to be replaced
-    public static final char[] PASSWORD1 = ":ET:DI34S:DLKRT#[;".toCharArray(); //to be replaced
+    public static final char[] SECRET_STORE_PASSWORD = "3q498tyakjgDD[;*DF".toCharArray(); //to be replaced
+    public static final char[] PUBLIC_STORE_PASSWORD = ":ET:DI34S:DLKRT#[;".toCharArray(); //to be replaced
 
 
     public Cryptor(Files obj)
@@ -61,8 +60,8 @@ public class Cryptor
             ecdh = KeyAgreement.getInstance("ECDH");
             sha256 = MessageDigest.getInstance("SHA-256");
 
-            secretKeyDB = manager.createOrLoadKeystore(false, PASSWORD);
-            publicKeyDB = manager.createOrLoadKeystore(true, PASSWORD1);
+            secretKeyDB = manager.createOrLoadKeystore(false, SECRET_STORE_PASSWORD);
+            publicKeyDB = manager.createOrLoadKeystore(true, PUBLIC_STORE_PASSWORD);
         }
         catch (NoSuchAlgorithmException | NoSuchPaddingException e)
         {
@@ -264,7 +263,7 @@ public class Cryptor
             e.printStackTrace();
         }
 
-        manager.saveKeyStore(publicKeyDB, PASSWORD);
+        manager.saveKeyStore(publicKeyDB, PUBLIC_STORE_PASSWORD);
 
         try
         {
@@ -289,7 +288,7 @@ public class Cryptor
             e.printStackTrace();
         }
 
-        manager.saveKeyStore(secretKeyDB, PASSWORD);
+        manager.saveKeyStore(secretKeyDB, SECRET_STORE_PASSWORD);
 
         try
         {
@@ -314,7 +313,7 @@ public class Cryptor
             e.printStackTrace();
         }
 
-        manager.saveKeyStore(publicKeyDB, PASSWORD);
+        manager.saveKeyStore(publicKeyDB, SECRET_STORE_PASSWORD);
 
         try
         {

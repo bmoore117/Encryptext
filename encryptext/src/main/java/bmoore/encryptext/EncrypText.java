@@ -36,6 +36,8 @@ public class EncrypText extends Application
 	{
 		super.onCreate();
 
+		PRNGFixes.apply();
+
         TelephonyManager mgr = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         phoneNumber = formatNumber(mgr.getLine1Number());
 
@@ -43,8 +45,6 @@ public class EncrypText extends Application
         cryptor = new Cryptor(manager);
         cryptor.initPublicCrypto();
         cal = new GregorianCalendar();
-
-        PRNGFixes.apply();
 	}
 	
 	private String formatNumber(String number)

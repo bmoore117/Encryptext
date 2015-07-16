@@ -42,7 +42,7 @@ public class SendingStatus extends BroadcastReceiver
                 return;
             }
 
-            Intent in = new Intent(SenderSvc.class.getName());
+            Intent in = new Intent(context, SenderSvc.class);
             in.putExtra("p", pos);
             in.putExtra("a", number);
 
