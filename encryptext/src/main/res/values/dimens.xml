@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="convitem_size">8pt</dimen>
+    <dimen name="contactsize">8pt</dimen>
+    <dimen name="contactpadding">8dip</dimen><dimen name="ContactHeight">35dip</dimen><dimen name="ContactKeyHeight">75dip</dimen>
+</resources>

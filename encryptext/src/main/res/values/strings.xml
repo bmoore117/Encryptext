@@ -1,0 +1,18 @@
+<resources>
+
+    <string name="app_name">EncrypText</string>
+    <string name="menu_settings">Settings</string>
+    <string name="title_activity_encryp_text">EncrypText</string>
+
+
+    <string name="Search">Search</string>
+    <string name="Write">Write</string>
+    <string name="Placeholder">Placeholder</string>
+    <string name="To">To</string>
+    <string name="Type_Message">Type Message</string>
+    <string name="Send">Send</string>
+    <string name="Start_Conversation">startConversationView</string>
+    <string name="Title_Conversation_View">Conversation</string>
+    <string name="Send_Message">sendMessage</string>
+
+</resources>

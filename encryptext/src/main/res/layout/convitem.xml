@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:paddingBottom="5.0dip"
+    android:paddingTop="5.0dip" >
+    
+    <ImageView
+        android:id="@+id/ContactThumb"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/Placeholder"
+        android:paddingRight="6.0dip" />
+
+    <LinearLayout
+        android:id="@+id/linearLayout1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/ContactThumb"
+        android:layout_toRightOf="@+id/ContactThumb"
+        android:orientation="vertical" >
+
+        <TextView
+            android:id="@+id/From"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingBottom="4.0dip"
+            android:text="@string/Placeholder"
+            android:textSize="@dimen/convitem_size" />
+
+        <TextView
+            android:id="@+id/Message"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/Placeholder" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/Date"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_alignTop="@+id/linearLayout1"
+        android:text="@string/Placeholder"
+        android:textIsSelectable="false" />
+
+</RelativeLayout>
