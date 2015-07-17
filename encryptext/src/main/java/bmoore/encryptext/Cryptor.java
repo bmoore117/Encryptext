@@ -2,8 +2,15 @@ package bmoore.encryptext;
 
 
 import android.util.Log;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -16,14 +23,20 @@ import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.UnrecoverableEntryException;
 import java.security.cert.Certificate;
+import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.HashMap;
 import java.util.TreeMap;
+
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyAgreement;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 public class Cryptor
@@ -39,7 +52,9 @@ public class Cryptor
 
     private KeyPair pair;
 
-    private TreeMap<String, PublicKey> inNegotiation;
+    private HashMap<String, PublicKey> inNegotiation;
+    private HashMap<SecretKey, byte[]> lastReceivedCipher;
+    private HashMap<SecretKey, byte[]> lastSentCipher;
 
     private KeyStore secretKeyDB, publicKeyDB;
 
@@ -50,6 +65,9 @@ public class Cryptor
     public Cryptor(Files obj)
     {
         manager = obj;
+        lastReceivedCipher = new HashMap<>();
+        lastSentCipher = new HashMap<>();
+        inNegotiation = new HashMap<>();
 
         try
         {
@@ -70,31 +88,27 @@ public class Cryptor
         }
     }
 
-    void finalize(String address)
+    public SecretKey finalize(String address) throws InvalidKeyException
     {
         PublicKey k = inNegotiation.get(address);
         inNegotiation.remove(address);
 
-        try
-        {
-            ecdh.init(pair.getPrivate());
-            ecdh.doPhase(k, true);
-            byte[] secret = ecdh.generateSecret();
 
-            byte[] newSecret = sha256.digest(secret);
-            SecretKey finalKey = new SecretKeySpec(newSecret, "AES");
+        ecdh.init(pair.getPrivate());
+        ecdh.doPhase(k, true);
+        byte[] secret = ecdh.generateSecret();
 
-            storeSecretKey(finalKey, address);
-        }
-        catch (InvalidKeyException e)
-        {
-            e.printStackTrace();
-        }
+        byte[] newSecret = sha256.digest(secret);
+        SecretKey finalKey = new SecretKeySpec(newSecret, "AES");
+
+        storeSecretKey(finalKey, address);
+
+        return finalKey;
     }
 
-    public byte[] getMyKeyBytes()
+    public PublicKey getMyPublicKey()
     {
-        return pair.getPublic().getEncoded();
+        return pair.getPublic();
     }
 
     void initPublicCrypto()
@@ -139,9 +153,6 @@ public class Cryptor
 
         if(loadPublicKey(address) == null)
             Log.i(TAG, "Key not stored");
-
-        if(inNegotiation == null)
-            inNegotiation = new TreeMap<>();
 
         inNegotiation.put(address, k);
 
@@ -325,18 +336,70 @@ public class Cryptor
         }
     }
 
-
-
-
-    /*public void ensurePublicKeys()
+    public byte[] encryptMessage(byte[] message, SecretKey key, int sendIV) throws InvalidKeyException, BadPaddingException,
+            IllegalBlockSizeException, InvalidAlgorithmParameterException
     {
-        if (manager.hasRSAKeys())
-            return;
+        if(sendIV == 0)
+        {
+            aes.init(Cipher.ENCRYPT_MODE, key, source);
+            byte[] encryptedMessage = aes.doFinal(message);
 
-        PRNGFixes.apply();
+            byte[] lastSent = new byte[16];
+            System.arraycopy(encryptedMessage, encryptedMessage.length - 16, lastSent, 0, 16);
+            lastSentCipher.put(key, lastSent);
 
+            byte[] IV = aes.getIV();
+            byte[] ivAndMessage = new byte[encryptedMessage.length + IV.length];
+            System.arraycopy(IV, 0, ivAndMessage, 0, IV.length);
+            System.arraycopy(encryptedMessage, 0, ivAndMessage, IV.length, encryptedMessage.length);
 
-    }*/
+            return ivAndMessage;
+        }
+        else
+        {
+            AlgorithmParameterSpec ivSpec = new IvParameterSpec(lastSentCipher.get(key));
+            aes.init(Cipher.ENCRYPT_MODE, key, ivSpec);
 
+            byte[] encryptedMessage = aes.doFinal(message);
 
+            byte[] lastSent = new byte[16];
+            System.arraycopy(encryptedMessage, encryptedMessage.length - 16, lastSent, 0, 16);
+            lastSentCipher.put(key, lastSent);
+
+            return encryptedMessage;
+        }
+    }
+
+    public byte[] decryptMessage(byte[] cipherTextPacket, SecretKey key, int containsIV) throws InvalidKeyException, BadPaddingException,
+            IllegalBlockSizeException, InvalidAlgorithmParameterException
+    {
+
+        byte[] plaintext;
+
+        if(containsIV == 0)
+        {
+            byte[] IV = new byte[16];
+            System.arraycopy(cipherTextPacket, 0, IV, 0, 16);
+
+            byte[] cipherText = new byte[cipherTextPacket.length - 16];
+            System.arraycopy(cipherTextPacket, 16, cipherText, 0, cipherText.length);
+
+            AlgorithmParameterSpec ivSpec = new IvParameterSpec(IV);
+            aes.init(Cipher.DECRYPT_MODE, key, ivSpec);
+
+            plaintext = aes.doFinal(cipherText);
+        }
+        else
+        {
+            AlgorithmParameterSpec ivSpec = new IvParameterSpec(lastReceivedCipher.get(key));
+            aes.init(Cipher.DECRYPT_MODE, key, ivSpec);
+            plaintext = aes.doFinal(cipherTextPacket);
+        }
+
+        byte[] newIV = new byte[16];
+        System.arraycopy(cipherTextPacket, cipherTextPacket.length - 16, newIV, 0, 16);
+        lastReceivedCipher.put(key, newIV);
+
+        return plaintext;
+    }
 }

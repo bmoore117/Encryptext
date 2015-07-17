@@ -26,6 +26,14 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
+import android.widget.Toast;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.security.Key;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.TreeMap;
@@ -300,18 +308,16 @@ public class Conversation extends ListActivity
                 updateTo(c.getName());
                 setBitmap(Conversation.number);
 
-                if(c.getAlpha() == HALF)
-                {
+                if (c.getAlpha() == HALF) {
                     AlertDialog.Builder builder = new AlertDialog.Builder(context);
                     builder.setTitle("Negotiate Keys");
                     builder.setMessage("No key found for " + c.getName() + ". Begin key negotiation?");
                     builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialogInterface, int i) {
-
                             Bundle b = new Bundle();
-                            b.putByteArray("k", cryptor.getMyKeyBytes());
-                            b.putString("a", number);
+                            b.putSerializable(EncrypText.KEY, cryptor.getMyPublicKey());
+                            b.putString(EncrypText.ADDRESS, number);
                             senderSvc.addJob(b);
                         }
                     });
@@ -432,11 +438,16 @@ public class Conversation extends ListActivity
 
         ConversationEntry item = b.getParcelable("M");
 		ArrayList<ConversationEntry> messages = b.getParcelableArrayList("Ms");
-		String time = b.getString("t");
-		String address = b.getString("a");
-        String name = b.getString("n");
+		String time = b.getString(EncrypText.TIME);
+		String address = b.getString(EncrypText.ADDRESS);
+        String name = b.getString(EncrypText.NAME);
+        SecretKey key = (SecretKey) b.getSerializable(EncrypText.KEY);
 
-        if(item != null)
+        if(key != null)
+        {
+            secretKey = key;
+        }
+        else if(item != null)
         {
             item.setPhoto(other);
             adapter.add(item);
@@ -466,7 +477,7 @@ public class Conversation extends ListActivity
 		}
 		else if (time != null)
 		{
-			int pos = intent.getIntExtra("p", -1);
+			int pos = intent.getIntExtra(EncrypText.THREAD_POSITION, -1);
 
             ConversationEntry temp = adapter.getItem(pos);
             temp.setDate(time);
@@ -475,7 +486,7 @@ public class Conversation extends ListActivity
 		}
 		else
 		{
-			String error = b.getString("e");
+			String error = b.getString(EncrypText.ERROR);
 			adapter.getItem(adapter.getCount() - 1).setDate(error); //create fixed length
             conversationChanged = true;
 		}
@@ -497,8 +508,8 @@ public class Conversation extends ListActivity
 		if (adapter.getCount() > 0 && conversationChanged)
 		{	
 			ConversationEntry item = adapter.getItem(adapter.getCount() - 1);
-			manager.writePreview(new ConversationEntry(item.getMessage(), number, name, 
-					item.getDate(), null), this);
+			manager.writePreview(new ConversationEntry(item.getMessage(), number, name,
+                    item.getDate(), null), this);
 			Main.setNewData();
             conversationChanged = false;
 		}
@@ -566,30 +577,32 @@ public class Conversation extends ListActivity
 		if (!number.equals(""))
 		{
 			to.setVisibility(View.GONE);
-            Editable e = messageBox.getText();
+            Editable editable = messageBox.getText();
 
-            if(e == null)
+            if(editable == null)
             {
                 Log.v(TAG, "Could not access messageBox Editable");
                 return;
             }
 
-            String text = e.toString();
+            String text = editable.toString();
 
             ConversationEntry item = new ConversationEntry(text, number, "Me", "Sending************", me);
 
             Bundle b = new Bundle();
-            b.putParcelable("i", item);
-            b.putInt("p", adapter.getCount());
+            b.putParcelable(EncrypText.THREAD_ITEM, item);
+            b.putInt(EncrypText.THREAD_POSITION, adapter.getCount());
+            b.putSerializable(EncrypText.KEY, secretKey);
 
             senderSvc.addJob(b);
 
             adapter.add(item);
             conversationChanged = true;
-
-
 		}
 	}
+
+
+
 
 	/**
 	 * Method to load a contact picture given a phone number. If passed a null String, queries the content

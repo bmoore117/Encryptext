@@ -15,7 +15,10 @@ import android.os.IBinder;
 import android.provider.ContactsContract;
 import android.telephony.SmsMessage;
 import android.util.Log;
+import android.widget.Toast;
 
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
 import java.security.PublicKey;
 import java.util.LinkedList;
 import java.util.ArrayList;
@@ -23,6 +26,10 @@ import java.util.Calendar;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeMap;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.SecretKey;
 
 public class ReceiverSvc extends Service
 {
@@ -129,13 +136,31 @@ public class ReceiverSvc extends Service
                     Log.i(TAG, "AddMsgFragment Processing status " + processingStatus);
 
                     Log.i(TAG, "Generating secret key");
-                    cryptor.finalize(address);
+                    SecretKey secretKey;
+                    try {
+                        secretKey = cryptor.finalize(address);
+                    }
+                    catch (InvalidKeyException e) {
+                        Log.e(TAG, "Error generating secret key", e);
+                        Toast.makeText(this, "Could not generate secret key from exchange", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    if ((Conversation.isActive()) && (Conversation.currentNumber().equals(address)))
+                    {
+                        Log.i(TAG, "Passing secret key to Conversation");
+                        Intent in = new Intent(this, Conversation.class);
+                        in.putExtra(EncrypText.KEY, secretKey);
+                        in.setFlags(872415232); //Basically, clear top | single top | new task, as I recall.
+                        startActivity(in);
+                    }
                 }
             }
-            else
+            else if(header[0] == 2) //2 for regular aes encrypted message
             {
                 Log.i(TAG, "Building complete message");
-			    String message = buildMessage(thread.get(seq));
+                SecretKey key = cryptor.loadSecretKey(address);
+			    String message = buildMessage(thread.get(seq), key, seq);
 
 			    thread.remove(Integer.valueOf(seq));
                 Log.i(TAG, "AddMsgFragment Processing status " + processingStatus);
@@ -155,7 +180,6 @@ public class ReceiverSvc extends Service
 			messageExp.get(address).get(seq).schedule(d, 30000);
 		}
 	}
-	
 
 
 	/**
@@ -166,7 +190,7 @@ public class ReceiverSvc extends Service
 	 * @param message - a two layer byte array
 	 * @return - a String
 	 */
-	private String buildMessage(byte[][] message)
+	private String buildMessage(byte[][] message, SecretKey key, int sequenceNo)
 	{
 		byte[] buffer = new byte[message.length*(MAX_DATA_BYTES - HEADER_LENGTH)];
 
@@ -175,15 +199,35 @@ public class ReceiverSvc extends Service
 		{
             byte[] pdu = message[i];
             System.arraycopy(pdu, 0, buffer, i*pdu.length, pdu.length);
-			/*for(int j = 0; j < pdu.length; j++)
-			{
-				buffer[k] = pdu[j];
-				k++;
-			}*/
 		}
 
-		return new String(buffer).trim();
+        // If a message is split over multiple pdus, it will probably have trailing 0s at the end which will
+        //produce garbage during decryption
+        buffer = trimTrailingNulls(buffer);
+
+        byte[] decryptedBuffer = new byte[] {0};
+
+        try {
+            decryptedBuffer = cryptor.decryptMessage(buffer, key, sequenceNo);
+        }
+        catch (InvalidKeyException | BadPaddingException | IllegalBlockSizeException | InvalidAlgorithmParameterException e) {
+            Log.e(TAG, "While decrypting message", e);
+            Toast.makeText(this, "Error decrypting message", Toast.LENGTH_SHORT).show();
+        }
+
+        return new String(decryptedBuffer);
 	}
+
+    private byte[] trimTrailingNulls(byte[] buffer)
+    {
+        int i = buffer.length - 1;
+        while(buffer[i] == 0)
+            --i;
+        // now buffer[i] is the last non-zero byte
+        byte[] trimmed = new byte[i+1];
+        System.arraycopy(buffer, 0, trimmed, 0, i+1);
+        return trimmed;
+    }
 
     private byte[] buildKey(byte[][] parts, int length)
     {
@@ -198,7 +242,6 @@ public class ReceiverSvc extends Service
 
         return key;
     }
-
 
 	/**
 	 * Method to process all incoming PDUs in a bundle. Loops through bundle content,

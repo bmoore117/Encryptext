@@ -31,6 +31,17 @@ public class EncrypText extends Application
     private GregorianCalendar cal;
 	private String phoneNumber;
 
+
+    public static final String THREAD_POSITION = "p";
+    public static final String THREAD_ITEM = "i";
+    public static final String KEY = "k";
+    public static final String ERROR = "e";
+    public static final String TIME = "t";
+    public static final String ADDRESS = "a";
+    public static final String NAME = "n";
+
+
+
     @Override
 	public void onCreate()
 	{
