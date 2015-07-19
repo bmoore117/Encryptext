@@ -357,13 +357,13 @@ public class ReceiverSvc extends Service
 	private void makeNotification(ConversationEntry item)
 	{
 		Notification.Builder builder = new Notification.Builder(this);
-		Intent in = new Intent(ReceiverSvc.class.getName());
+		Intent in = new Intent(this, ReceiverSvc.class);
 
-		in.putExtra("a", item.getNumber());
-		in.putExtra("n", item.getName());
+		in.putExtra(EncrypText.ADDRESS, item.getNumber());
+		in.putExtra(EncrypText.NAME, item.getName());
 
-        Intent d = new Intent(ReceiverSvc.class.getName());
-        d.putExtra("a", item.getNumber());
+        Intent d = new Intent(this, ReceiverSvc.class);
+        d.putExtra(EncrypText.ADDRESS, item.getNumber());
 
 		PendingIntent p = PendingIntent.getService(this, 0, in, PendingIntent.FLAG_UPDATE_CURRENT);
         PendingIntent del = PendingIntent.getService(this, 1, d, PendingIntent.FLAG_UPDATE_CURRENT);
@@ -398,7 +398,7 @@ public class ReceiverSvc extends Service
 		{
             Log.i(TAG, "Passing");
 			Intent in = new Intent(this, Conversation.class);
-			in.putExtra("M", item);
+			in.putExtra(EncrypText.THREAD_ITEM, item);
 			in.setFlags(872415232); //Basically, clear top | single top | new task, as I recall.
 			startActivity(in);
 		}
@@ -408,7 +408,7 @@ public class ReceiverSvc extends Service
 
 			Intent in = new Intent(this, Main.class);
 			item.setAddress(address);
-			in.putExtra("M", item);
+			in.putExtra(EncrypText.THREAD_ITEM, item);
 			in.setFlags(872415232);
 			startActivity(in);
 		}
@@ -434,15 +434,15 @@ public class ReceiverSvc extends Service
 
 		if ((Conversation.isCreated()) && (Conversation.currentNumber().equals(address)))
         {
-			in.putExtra("Ms", this.finishedTexts.get(address));
+			in.putExtra(EncrypText.MULTIPLE_THREAD_ITEMS, this.finishedTexts.get(address));
             in.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(in);
         }
 		else if ((Conversation.isCreated()) && (!Conversation.currentNumber().equals(address)))
         {
             //file reload pass
-			in.putExtra("a", address);
-            in.putExtra("n", name);
+			in.putExtra(EncrypText.ADDRESS, address);
+            in.putExtra(EncrypText.NAME, name);
 
             in.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
@@ -450,8 +450,8 @@ public class ReceiverSvc extends Service
         }
         else //cold start from file
         {
-            in.putExtra("a", address);
-            in.putExtra("n", name);
+            in.putExtra(EncrypText.ADDRESS, address);
+            in.putExtra(EncrypText.NAME, name);
             in.addFlags(268435456);
             TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
             stackBuilder.addParentStack(Conversation.class);
@@ -561,10 +561,10 @@ public class ReceiverSvc extends Service
 
             if (b != null)
             {
-                Bundle pdus = b.getBundle("pdus");
-                String name = b.getString("n");
-                String address = b.getString("a");
-                int pos = b.getInt("p", -1);
+                Bundle pdus = b.getBundle(EncrypText.PDUS);
+                String name = b.getString(EncrypText.NAME);
+                String address = b.getString(EncrypText.ADDRESS);
+                int pos = b.getInt(EncrypText.THREAD_POSITION, -1);
 
                 if (pdus != null)
                 {

@@ -13,7 +13,7 @@ public class Receiver extends BroadcastReceiver
 		if (b != null)
 		{
 			Intent localIntent = new Intent(c, ReceiverSvc.class);
-			localIntent.putExtra("pdus", b);
+			localIntent.putExtra(EncrypText.PDUS, b);
 			c.startService(localIntent);
 		}
 	}

@@ -113,13 +113,21 @@ public class Main extends ListActivity
         created = false;
         if(ReceiverSvc.isCreated())
         {
-            Log.i(TAG, "Bumping service for quit check");
-            Intent in = new Intent(ReceiverSvc.class.getName());
+            Log.i(TAG, "Bumping receiver service for quit check");
+            Intent in = new Intent(this, ReceiverSvc.class);
             //in.putExtra("a", app.getPhoneNumber());
             startService(in);
         }
         else
-            Log.i(TAG, "Service not running");
+            Log.i(TAG, "Receiver not running");
+
+        if(SenderSvc.isCreated())
+        {
+            Log.i(TAG, "Bumping sender service for quit check");
+            Intent in = new Intent(this, SenderSvc.class);
+            in.putExtra(EncrypText.QUIT_FLAG, true);
+            startService(in);
+        }
 
 		super.onDestroy();
 	}
@@ -157,12 +165,12 @@ public class Main extends ListActivity
 	public void onNewIntent(Intent intent)
 	{
 		active = true;
-		ConversationEntry item = intent.getExtras().getParcelable("M");
+		ConversationEntry item = intent.getExtras().getParcelable(EncrypText.THREAD_ITEM);
 		if (item != null)
 		{
 			updateList(item);
-			Intent in = new Intent(ReceiverSvc.class.getName());
-			in.putExtra("d", item.getNumber());
+			Intent in = new Intent(this, ReceiverSvc.class);
+			in.putExtra(EncrypText.ADDRESS, item.getNumber());
 			startService(in);
 		}
 	}
@@ -214,8 +222,8 @@ public class Main extends ListActivity
 	public void startConversationView(String number, String name)
 	{
 		Intent in = new Intent(this, Conversation.class);
-		in.putExtra("a", number);
-		in.putExtra("n", name);
+		in.putExtra(EncrypText.ADDRESS, number);
+		in.putExtra(EncrypText.NAME, name);
 		startActivity(in);
 	}
 

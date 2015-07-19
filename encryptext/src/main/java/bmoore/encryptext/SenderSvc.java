@@ -45,6 +45,8 @@ public class SenderSvc extends Service {
     private String currentConv;
     private Cryptor cryptor;
 
+    private static boolean created;
+
 
     @Override
     public void onCreate()
@@ -93,9 +95,11 @@ public class SenderSvc extends Service {
             }
         };
         worker.start();
+
+        created = true;
     }
 
-    void addJob(Bundle b)
+    public void addJob(Bundle b)
     {
         jobs.add(b);
 
@@ -104,11 +108,19 @@ public class SenderSvc extends Service {
             synchronized (worker)
             {
                 Log.i(TAG, "Bumping thread");
-            worker.notify();
+                worker.notify();
+            }
         }
     }
-}
 
+
+    /**
+     * This method is called by the message-sent confirmation mechanism
+     * @param intent An intent containing the data needed to confirm a message part
+     * @param one
+     * @param two
+     * @return
+     */
     @Override
     public int onStartCommand(Intent intent, int one, int two)
     {
@@ -118,6 +130,7 @@ public class SenderSvc extends Service {
         b.putString(EncrypText.ADDRESS, intent.getStringExtra(EncrypText.ADDRESS));
         b.putInt(EncrypText.THREAD_POSITION, intent.getIntExtra(EncrypText.THREAD_POSITION, -1));
         b.putByteArray(EncrypText.KEY, intent.getByteArrayExtra(EncrypText.KEY));
+        b.putBoolean(EncrypText.QUIT_FLAG, intent.getBooleanExtra(EncrypText.QUIT_FLAG, false));
 
         jobs.add(b);
 
@@ -129,7 +142,6 @@ public class SenderSvc extends Service {
                 worker.notify();
             }
         }
-
 
         return START_REDELIVER_INTENT;
     }
@@ -147,16 +159,7 @@ public class SenderSvc extends Service {
                 String address = b.getString(EncrypText.ADDRESS);
                 int pos = b.getInt(EncrypText.THREAD_POSITION, -1);
                 Key key = (Key) b.getSerializable(EncrypText.KEY);
-
-
-                /*Key key = null;
-                try {
-                    key = cryptor.deserializeKey(b.getByteArray(EncrypText.KEY));
-                }
-                catch (IOException | ClassNotFoundException e) {
-                    Log.e(TAG, "Error deserializing key", e);
-                    Toast.makeText(this, "Error deserializing key", Toast.LENGTH_SHORT).show();
-                }*/
+                boolean shouldQuit = b.getBoolean(EncrypText.QUIT_FLAG, false);
 
                 if(item != null)
                 {
@@ -173,6 +176,8 @@ public class SenderSvc extends Service {
                     Log.i(TAG, "Confirming message part");
                     confirmMessagePart(address, pos);
                 }
+                else if(shouldQuit)
+                    tryQuit();
             }
             else
                 tryQuit();
@@ -345,8 +350,8 @@ public class SenderSvc extends Service {
                 Intent in = new Intent(this, Conversation.class);
                 in.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
-                in.putExtra("p", pos);
-                in.putExtra("t", time);
+                in.putExtra(EncrypText.THREAD_POSITION, pos);
+                in.putExtra(EncrypText.TIME, time);
 
                 startActivity(in);
             }
@@ -408,5 +413,9 @@ public class SenderSvc extends Service {
         {
             return SenderSvc.this;
         }
+    }
+
+    public static boolean isCreated() {
+        return created;
     }
 }

@@ -34,11 +34,14 @@ public class EncrypText extends Application
 
     public static final String THREAD_POSITION = "p";
     public static final String THREAD_ITEM = "i";
+    public static final String MULTIPLE_THREAD_ITEMS = "is";
     public static final String KEY = "k";
     public static final String ERROR = "e";
     public static final String TIME = "t";
     public static final String ADDRESS = "a";
     public static final String NAME = "n";
+    public static final String QUIT_FLAG = "q";
+    public static final String PDUS = "pdus";
 
 
 

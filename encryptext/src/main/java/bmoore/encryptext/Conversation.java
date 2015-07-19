@@ -363,14 +363,16 @@ public class Conversation extends ListActivity
 		
 		Bundle b = getIntent().getExtras();
 		
-		if (b != null && b.containsKey("a") && b.containsKey("n")) //if reading in existing conv
+		if (b != null && b.containsKey(EncrypText.ADDRESS) && b.containsKey(EncrypText.NAME)) //if reading in existing conv
 		{
-			number = b.getString("a");
+			number = b.getString(EncrypText.ADDRESS);
 			setBitmap(number); //get other's photo
 			adapter.addAll(manager.readConv(this, number, 0, me, other));
 			
-			name = b.getString("n");
+			name = b.getString(EncrypText.NAME);
 			to.setVisibility(View.GONE);
+
+            secretKey = cryptor.loadSecretKey(number);
 		}
 		
 		setListAdapter(adapter);
@@ -384,6 +386,12 @@ public class Conversation extends ListActivity
         super.onStart();
 
         //Toast.makeText(this, "Starting", Toast.LENGTH_SHORT).show();
+
+        if(!SenderSvc.isCreated())
+        {
+            Intent sender = new Intent(this, SenderSvc.class);
+            startService(sender);
+        }
 
         if(senderSvc == null)
         {
@@ -436,8 +444,8 @@ public class Conversation extends ListActivity
             return;
         }
 
-        ConversationEntry item = b.getParcelable("M");
-		ArrayList<ConversationEntry> messages = b.getParcelableArrayList("Ms");
+        ConversationEntry item = b.getParcelable(EncrypText.THREAD_ITEM);
+		ArrayList<ConversationEntry> messages = b.getParcelableArrayList(EncrypText.MULTIPLE_THREAD_ITEMS);
 		String time = b.getString(EncrypText.TIME);
 		String address = b.getString(EncrypText.ADDRESS);
         String name = b.getString(EncrypText.NAME);
@@ -574,7 +582,7 @@ public class Conversation extends ListActivity
 	 */
 	public void sendMessage(View v)
 	{
-		if (!number.equals(""))
+		if (!"".equals(number))
 		{
 			to.setVisibility(View.GONE);
             Editable editable = messageBox.getText();

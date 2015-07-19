@@ -27,14 +27,14 @@ public class SendingStatus extends BroadcastReceiver
 		
 		if(result == Activity.RESULT_OK)
 		{
-            int pos = intent.getIntExtra("p", -1);
+            int pos = intent.getIntExtra(EncrypText.THREAD_POSITION, -1);
             if(pos == -1)
             {
                 Log.v(TAG, "Could not retrieve position to confirm");
                 return;
             }
 
-            String number = intent.getStringExtra("a");
+            String number = intent.getStringExtra(EncrypText.ADDRESS);
 
             if(number == null)
             {
@@ -43,8 +43,8 @@ public class SendingStatus extends BroadcastReceiver
             }
 
             Intent in = new Intent(context, SenderSvc.class);
-            in.putExtra("p", pos);
-            in.putExtra("a", number);
+            in.putExtra(EncrypText.THREAD_POSITION, pos);
+            in.putExtra(EncrypText.ADDRESS, number);
 
             context.startService(in);
         }
