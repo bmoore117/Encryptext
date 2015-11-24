@@ -1,10 +1,6 @@
 <!--suppress AndroidLintUnusedResources -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="bmoore.encryptext"
-    android:versionCode="1"
-    android:versionName="1.0" >
-
-    <uses-sdk android:minSdkVersion="16" android:targetSdkVersion="19" />
+    package="bmoore.encryptext">
 
     <permission android:name="com.encryptext.CALL_SERVICE" />
     <uses-permission android:name="com.encryptext.CALL_SERVICE"/>
@@ -19,7 +15,7 @@
 
     <application android:name="bmoore.encryptext.EncrypText" android:icon="@mipmap/icon" android:label="@string/app_name" android:theme="@style/AppTheme" android:allowBackup="false">
 
-        <activity android:name="bmoore.encryptext.Main" android:label="@string/title_activity_encryp_text">
+        <activity android:name="bmoore.encryptext.Main" android:label="@string/title_home_screen">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

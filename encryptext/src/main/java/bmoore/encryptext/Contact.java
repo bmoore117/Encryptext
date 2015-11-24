@@ -9,6 +9,13 @@ public class Contact
     private Bitmap thumb;
     private int alpha;
 
+    public enum KeyStatus
+    {
+        REQUEST_SENT,
+        NEEDS_REVIEW,
+        KEYS_EXCHNGD
+    }
+
     public Contact()
     {
         name = "";

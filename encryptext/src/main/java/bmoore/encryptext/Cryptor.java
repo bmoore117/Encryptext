@@ -3,14 +3,9 @@ package bmoore.encryptext;
 
 import android.util.Log;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
-import java.security.Key;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -23,12 +18,12 @@ import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.UnrecoverableEntryException;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.HashMap;
-import java.util.TreeMap;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -88,11 +83,10 @@ public class Cryptor
         }
     }
 
-    public SecretKey finalize(String address) throws InvalidKeyException
+    public SecretKey finalize(String address) throws InvalidKeyException, NoSuchAlgorithmException, CertificateException, IOException, KeyStoreException
     {
         PublicKey k = inNegotiation.get(address);
         inNegotiation.remove(address);
-
 
         ecdh.init(pair.getPrivate());
         ecdh.doPhase(k, true);
@@ -111,40 +105,27 @@ public class Cryptor
         return pair.getPublic();
     }
 
-    void initPublicCrypto()
+    void initPublicCrypto() throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException, InvalidAlgorithmParameterException
     {
         if(loadMyKeys() == false)
             return;
 
         ECGenParameterSpec ecParamSpec = new ECGenParameterSpec("secp384r1");
-        try
-        {
-            pairGen.initialize(ecParamSpec);
-            pair = pairGen.generateKeyPair();
-            Log.i(TAG, pair.getPrivate().getFormat());
-            Log.i(TAG, pair.getPublic().getFormat());
-            storeMyKeys(pair);
-        }
-        catch (InvalidAlgorithmParameterException e)
-        {
-            e.printStackTrace();
-        }
+
+        pairGen.initialize(ecParamSpec);
+        pair = pairGen.generateKeyPair();
+        Log.i(TAG, pair.getPrivate().getFormat());
+        Log.i(TAG, pair.getPublic().getFormat());
+        storeMyKeys(pair);
     }
 
-    boolean checkAndHold(byte[] key, String address, String name)
+    boolean checkAndHold(byte[] key, String address, String name) throws NoSuchAlgorithmException, KeyStoreException, CertificateException, IOException, InvalidKeySpecException
     {
         KeyFactory generator;
-        PublicKey k = null;
-        try
-        {
-            X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(key);
-            generator = KeyFactory.getInstance("EC");
-            k = generator.generatePublic(publicKeySpec);
-        }
-        catch (NoSuchAlgorithmException | InvalidKeySpecException e)
-        {
-            e.printStackTrace();
-        }
+        PublicKey k;
+        X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(key);
+        generator = KeyFactory.getInstance("EC");
+        k = generator.generatePublic(publicKeySpec);
 
         if(loadPublicKey(address) != null) //should not find our public key in the private entry it's stored in
             return false;                   //thus self-texting should be fine and renegotiations won't happen
@@ -259,34 +240,20 @@ public class Cryptor
         return false;
     }
 
-    void storeMyKeys(KeyPair pair)
+    void storeMyKeys(KeyPair pair) throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException
     {
         EncrypCert pub = new EncrypCert(pair.getPublic(), "Me", "");
         Certificate[] certs = new Certificate[] {pub};
         KeyStore.PrivateKeyEntry prv = new KeyStore.PrivateKeyEntry(pair.getPrivate(), certs);
 
-        try
-        {
-            publicKeyDB.setEntry("Me", prv, null);
-        }
-        catch (KeyStoreException e)
-        {
-            e.printStackTrace();
-        }
+        publicKeyDB.setEntry("Me", prv, null);
 
         manager.saveKeyStore(publicKeyDB, PUBLIC_STORE_PASSWORD);
 
-        try
-        {
-            Log.i(TAG, "Me" + " " + publicKeyDB.containsAlias("Me"));
-        }
-        catch (KeyStoreException e)
-        {
-            e.printStackTrace();
-        }
+        Log.i(TAG, "Me" + " " + publicKeyDB.containsAlias("Me"));
     }
 
-    void storeSecretKey(SecretKey key, String address)
+    void storeSecretKey(SecretKey key, String address) throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException
     {
         KeyStore.SecretKeyEntry skEntry = new KeyStore.SecretKeyEntry(key);
 
@@ -311,29 +278,14 @@ public class Cryptor
         }
     }
 
-    void storePublicKey(PublicKey key, String address, String name)
+    void storePublicKey(PublicKey key, String address, String name) throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException
     {
         Log.i(TAG, "Storing key for " + address);
 
-        try
-        {
-            publicKeyDB.setCertificateEntry(address, new EncrypCert(key, name, address));
-        }
-        catch (KeyStoreException e)
-        {
-            e.printStackTrace();
-        }
-
+        publicKeyDB.setCertificateEntry(address, new EncrypCert(key, name, address));
         manager.saveKeyStore(publicKeyDB, SECRET_STORE_PASSWORD);
 
-        try
-        {
-            Log.i(TAG, "SPK " + address + " " + publicKeyDB.containsAlias(address));
-        }
-        catch (KeyStoreException e)
-        {
-            e.printStackTrace();
-        }
+        Log.i(TAG, "SPK " + address + " " + publicKeyDB.containsAlias(address));
     }
 
     public byte[] encryptMessage(byte[] message, SecretKey key, int sendIV) throws InvalidKeyException, BadPaddingException,
@@ -401,5 +353,12 @@ public class Cryptor
         lastReceivedCipher.put(key, newIV);
 
         return plaintext;
+    }
+
+    public void removePublicKey(String address) throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException
+    {
+        inNegotiation.remove(address);
+        publicKeyDB.deleteEntry(address);
+        manager.saveKeyStore(publicKeyDB, PUBLIC_STORE_PASSWORD);
     }
 }

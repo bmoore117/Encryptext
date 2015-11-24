@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -17,8 +18,6 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.provider.ContactsContract.CommonDataKinds;
 import android.provider.ContactsContract.Contacts;
-import android.provider.ContactsContract.PhoneLookup;
-import android.provider.ContactsContract.Profile;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -28,13 +27,7 @@ import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.security.Key;
-import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.TreeMap;
 
@@ -66,9 +59,7 @@ public class Conversation extends ListActivity
     private Files manager;
     private Cryptor cryptor;
     private SenderSvc senderSvc;
-    private PublicKey publicKey;
     private SecretKey secretKey;
-    private Thread loader;
     private boolean shouldLoaderWait;
     private ArrayList<Contact> suggestions;
     private String query;
@@ -78,7 +69,95 @@ public class Conversation extends ListActivity
     private EditText messageBox;
     private Context context;
 
+    private final Thread loader = new Thread("Suggestions Loader")
+    {
+        @Override
+        public void run()
+        {
+            while(true)
+            {
+                shouldLoaderWait = true;
+                while (shouldLoaderWait)
+                {
+                    try
+                    {
+                        synchronized (loader)
+                        {
+                            loader.wait();
+                        }
+                    }
+                    catch (InterruptedException e)
+                    {
+                        Log.i(TAG, "Suggestions loader woken");
+                    }
+                }
 
+                suggestions = new ArrayList<>();
+
+                Uri temp = CommonDataKinds.Phone.CONTENT_FILTER_URI;
+
+                if(temp == null)
+                {
+                    Log.v(TAG, "Could not read CommonDataKinds.Phone.CONTENT_FILTER_URI");
+                    return;
+                }
+
+                Uri person = Uri.withAppendedPath(temp, query);
+
+                if(person == null)
+                {
+                    Log.v(TAG, "Failed constructing Uri person with base Uri and contact name/number");
+                    return;
+                }
+
+                String[] projection = {Contacts.DISPLAY_NAME, CommonDataKinds.Phone.NUMBER,
+                        CommonDataKinds.Phone.CONTACT_ID};
+                ContentResolver cr = getContentResolver();
+                Cursor c = cr.query(person, projection, null, null, null);
+
+                if(c == null)
+                {
+                    Log.v(TAG, "Query to contacts database with supplied args failed");
+                    return;
+                }
+
+                int i = c.getColumnIndex(Contacts.DISPLAY_NAME);
+                int j = c.getColumnIndex(CommonDataKinds.Phone.NUMBER);
+                int k = c.getColumnIndex(CommonDataKinds.Phone.CONTACT_ID);
+
+                if (c.moveToFirst())
+                {
+                    do
+                    {
+                        String name = c.getString(i);
+                        String number = c.getString(j);
+                        Uri picPath = Uri.withAppendedPath(Contacts.CONTENT_URI, c.getString(k));
+                        Bitmap thumb = BitmapFactory.decodeStream(
+                                Contacts.openContactPhotoInputStream(getContentResolver(), picPath));
+
+                        secretKey = cryptor.loadSecretKey(formatNumber(number));
+
+                        if(secretKey == null) //might have to re-engineer contact to store secret key
+                            suggestions.add(new Contact(name, number, thumb, HALF));
+                        else
+                            suggestions.add(new Contact(name, number, thumb, FULL));
+                    }
+                    while (c.moveToNext());
+                }
+
+                c.close();
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run()
+                    {
+                        contacts.clear();
+                        contacts.addAll(suggestions);
+                    }
+                });
+            }
+        }
+    };
 
 	/**
 	 * Method provided for the service to poll this activity and find out the conversation it is in
@@ -204,97 +283,6 @@ public class Conversation extends ListActivity
 		to.setAdapter(contacts);
 
         shouldLoaderWait = true;
-        loader = new Thread("Suggestions Loader")
-        {
-            @Override
-            public void run()
-            {
-                while(true)
-                {
-                    shouldLoaderWait = true;
-                    while (shouldLoaderWait)
-                    {
-                        try
-                        {
-                            synchronized (loader)
-                            {
-                                loader.wait();
-                            }
-                        }
-                        catch (InterruptedException e)
-                        {
-                            Log.i(TAG, "Suggestions loader woken");
-                        }
-                    }
-
-                    suggestions = new ArrayList<>();
-
-                    Uri temp = CommonDataKinds.Phone.CONTENT_FILTER_URI;
-
-                    if(temp == null)
-                    {
-                        Log.v(TAG, "Could not read CommonDataKinds.Phone.CONTENT_FILTER_URI");
-                        return;
-                    }
-
-                    Uri person = Uri.withAppendedPath(temp, query);
-
-                    if(person == null)
-                    {
-                        Log.v(TAG, "Failed constructing Uri person with base Uri and contact name/number");
-                        return;
-                    }
-
-                    String[] projection = {Contacts.DISPLAY_NAME, CommonDataKinds.Phone.NUMBER,
-                            CommonDataKinds.Phone.CONTACT_ID};
-                    ContentResolver cr = getContentResolver();
-                    Cursor c = cr.query(person, projection, null, null, null);
-
-                    if(c == null)
-                    {
-                        Log.v(TAG, "Query to contacts database with supplied args failed");
-                        return;
-                    }
-
-                    int i = c.getColumnIndex(Contacts.DISPLAY_NAME);
-                    int j = c.getColumnIndex(CommonDataKinds.Phone.NUMBER);
-                    int k = c.getColumnIndex(CommonDataKinds.Phone.CONTACT_ID);
-
-                    if (c.moveToFirst())
-                    {
-                        do
-                        {
-                            String name = c.getString(i);
-                            String number = c.getString(j);
-                            Uri picPath = Uri.withAppendedPath(Contacts.CONTENT_URI, c.getString(k));
-                            Bitmap thumb = BitmapFactory.decodeStream(
-                                    Contacts.openContactPhotoInputStream(getContentResolver(), picPath));
-
-                            secretKey = cryptor.loadSecretKey(formatNumber(number));
-                            publicKey = cryptor.loadPublicKey(formatNumber(number));
-
-                            if(secretKey == null) //might have to re-engineer contact to store secret key
-                                suggestions.add(new Contact(name, number, thumb, HALF));
-                            else
-                                suggestions.add(new Contact(name, number, thumb, FULL));
-                        }
-                        while (c.moveToNext());
-                    }
-
-                    c.close();
-
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run()
-                        {
-                            contacts.clear();
-                            contacts.addAll(suggestions);
-                        }
-                    });
-                }
-            }
-        };
-
         loader.start();
 		
 		to.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -306,33 +294,45 @@ public class Conversation extends ListActivity
                 Contact c = contacts.getItem(pos);
                 Conversation.number = formatNumber(c.getNumber());
                 updateTo(c.getName());
-                setBitmap(Conversation.number);
+                other = ContactUtils.getBitmap(getContentResolver(), number);
 
                 if (c.getAlpha() == HALF) {
-                    AlertDialog.Builder builder = new AlertDialog.Builder(context);
-                    builder.setTitle("Negotiate Keys");
-                    builder.setMessage("No key found for " + c.getName() + ". Begin key negotiation?");
-                    builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialogInterface, int i) {
-                            Bundle b = new Bundle();
-                            b.putSerializable(EncrypText.KEY, cryptor.getMyPublicKey());
-                            b.putString(EncrypText.ADDRESS, number);
-                            senderSvc.addJob(b);
-                        }
-                    });
-                    builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialogInterface, int i) {
-                            dialogInterface.cancel();
-                        }
-                    });
 
-                    AlertDialog dialog = builder.create();
-                    dialog.show();
+                    SharedPreferences prefs = getSharedPreferences(EncrypText.class.getSimpleName(), MODE_PRIVATE);
+
+                    if (!prefs.contains("firstTimeExchange"))
+                    {
+                        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                        builder.setTitle("Send key exchange request to " + c.getName() + "?");
+                        builder.setMessage("Like a friend request, this action will have to be confirmed or denied by the the other person. If they respond to the request, " +
+                                "you will both exchange your public keys and create a shared private key which will be used to encrypt your actual messages. " +
+                                "Tap Yes to send the other person a key exchange request with your public key and close the conversation window. For subsequent conversations this dialog will not be shown");
+
+                        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int buttonClicked) {
+                                getSharedPreferences(EncrypText.class.getSimpleName(), MODE_PRIVATE).edit()
+                                        .putBoolean("firstTimeExchange", false)
+                                        .putString(number, "inNegotiation").commit();
+                                startKeyExchange();
+                            }
+                        });
+                        builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int buttonClicked) {
+                                dialogInterface.cancel();
+                            }
+                        });
+
+                        AlertDialog dialog = builder.create();
+                        dialog.show();
+                    }
+                    else
+                    {
+                        Toast.makeText(Conversation.this, "Sending public key", Toast.LENGTH_SHORT).show();
+                        startKeyExchange();
+                    }
                 }
-                //if alpha is half, present popup window and negotiate key
-                //else load key
             }
         });
 		
@@ -359,14 +359,14 @@ public class Conversation extends ListActivity
 
         });
 		
-		setBitmap(null); //Get user's photo
+		me = ContactUtils.getBitmap(getContentResolver(), null); //Get user's photo
 		
 		Bundle b = getIntent().getExtras();
 		
 		if (b != null && b.containsKey(EncrypText.ADDRESS) && b.containsKey(EncrypText.NAME)) //if reading in existing conv
 		{
 			number = b.getString(EncrypText.ADDRESS);
-			setBitmap(number); //get other's photo
+			other = ContactUtils.getBitmap(getContentResolver(), number);
 			adapter.addAll(manager.readConv(this, number, 0, me, other));
 			
 			name = b.getString(EncrypText.NAME);
@@ -380,6 +380,16 @@ public class Conversation extends ListActivity
 		if (newData)
 			newData = false;
 	}
+
+    private void startKeyExchange()
+    {
+        Bundle b = new Bundle();
+        b.putSerializable(EncrypText.KEY, cryptor.getMyPublicKey());
+        b.putString(EncrypText.ADDRESS, number);
+        senderSvc.addJob(b);
+
+        finish();
+    }
 
     public void onStart()
     {
@@ -607,121 +617,6 @@ public class Conversation extends ListActivity
             adapter.add(item);
             conversationChanged = true;
 		}
-	}
-
-
-
-
-	/**
-	 * Method to load a contact picture given a phone number. If passed a null String, queries the content
-	 * resolver for the user profile ID, using the ContactsContract.Profile constants, and then uses the
-	 * Contacts' class method to open a photo stream. If passed a non-null String, uses the PhoneLookup
-	 * class together with the number passed to construct a Uri to search for and retrieve a contact ID,
-	 * performing the same steps afterward.
-     *
-	 * @param number - the phone number to retrieve a picture for
-	 */
-	public void setBitmap(String number)
-	{
-		Uri path;
-		long ID = -1L;
-		Cursor c;
-		if (number == null)
-		{
-			path = Profile.CONTENT_URI;
-
-            if(path == null) //do nothing if we couldn't access system services
-            {
-                Log.v(TAG, "Could not read Profile.CONTENT_URI");
-                return;
-            }
-
-			c = getContentResolver().query(path, new String[] { Profile._ID }, null, null, null);
-
-            if(c == null)
-            {
-                Log.v(TAG, "Content resolver returned no results for personal contact card query");
-                return;
-            }
-
-			if (c.moveToFirst())
-			{
-				do
-					ID = c.getLong(0);
-				while (c.moveToNext());
-			}
-			if (ID > Profile.MIN_ID)
-			{
-                Uri temp = Contacts.CONTENT_URI;
-
-                if(temp == null) //do nothing if we couldn't access system services
-                {
-                    Log.v(TAG, "Could not read Contacts.CONTENT_URI");
-                    return;
-                }
-
-				path = Uri.withAppendedPath(temp, "" + ID);
-
-                if(path == null) //if construction failed, do nothing
-                {
-                    Log.v(TAG, "Could not construct path with supplied ID & URI");
-                    return;
-                }
-
-				this.me = BitmapFactory.decodeStream(Contacts.openContactPhotoInputStream(
-                        getContentResolver(), path));
-			}
-		}
-		else
-		{
-            Uri temp = PhoneLookup.CONTENT_FILTER_URI;
-
-            if(temp == null)
-            {
-                Log.v(TAG, "Could not read PhoneLookup.CONTENT_FILTER_URI");
-                return;
-            }
-
-			path = Uri.withAppendedPath(temp, Uri.encode(number));
-
-            if(path == null)
-            {
-                Log.v(TAG, "Could not construct Uri from PhoneLookup.CONTENT_FILTER_URI and " +
-                        "phone number provided");
-                return;
-            }
-
-			c = getContentResolver().query(path, new String[] { Contacts._ID }, null, null, null);
-
-            if(c == null)
-            {
-                Log.v(TAG, "Content resolver returned no results for target contact card query");
-                return;
-            }
-
-			c.moveToFirst();
-			ID = c.getLong(0);
-
-            temp = Contacts.CONTENT_URI;
-
-            if(temp == null) //do nothing if we couldn't access system services
-            {
-                Log.v(TAG, "Could not read Contacts.CONTENT_URI");
-                return;
-            }
-
-			path = Uri.withAppendedPath(temp, "" + ID);
-
-            if(path == null)
-            {
-                Log.v(TAG, "Could not construct Uri from Contacts.CONTENT_URI and ID provided");
-                return;
-            }
-
-			this.other = BitmapFactory.decodeStream(Contacts.openContactPhotoInputStream(
-                    getContentResolver(), path));
-		}
-		
 	}
 
 	/**

@@ -10,12 +10,13 @@ import android.telephony.SmsManager;
 import android.util.Log;
 import android.widget.Toast;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
 import java.util.Calendar;
 import java.util.LinkedList;
 import java.util.TreeMap;
@@ -37,7 +38,6 @@ public class SenderSvc extends Service {
     private volatile LinkedList<Bundle> jobs;
     private TreeMap<String, TreeMap<Integer, long[]>> partialConfs;
     private TreeMap<String, TreeMap<Integer, String>> confirmTimes;
-    private Thread worker;
     private int processingStatus, sequenceNo;
     private Files manager;
     private EncrypText app;
@@ -46,6 +46,28 @@ public class SenderSvc extends Service {
     private Cryptor cryptor;
 
     private static boolean created;
+
+    private final Thread worker = new Thread("Sender Worker")
+    {
+        @Override
+        public void run()
+        {
+            synchronized (worker)
+            {
+                while(true)
+                {
+                    handleJobs();
+                    try
+                    {
+                        worker.wait();
+                    }
+                    catch (InterruptedException e)
+                    {
+                    }
+                }
+            }
+        }
+    };
 
 
     @Override
@@ -73,27 +95,6 @@ public class SenderSvc extends Service {
         partialConfs = new TreeMap<>();
         confirmTimes = new TreeMap<>();
 
-        worker = new Thread("Sender Worker")
-        {
-            @Override
-            public void run()
-            {
-                synchronized (worker)
-                {
-                    while(true)
-                    {
-                        handleJobs();
-                        try
-                        {
-                            worker.wait();
-                        }
-                        catch (InterruptedException e)
-                        {
-                        }
-                    }
-                }
-            }
-        };
         worker.start();
 
         created = true;
@@ -114,13 +115,6 @@ public class SenderSvc extends Service {
     }
 
 
-    /**
-     * This method is called by the message-sent confirmation mechanism
-     * @param intent An intent containing the data needed to confirm a message part
-     * @param one
-     * @param two
-     * @return
-     */
     @Override
     public int onStartCommand(Intent intent, int one, int two)
     {
@@ -170,6 +164,11 @@ public class SenderSvc extends Service {
                 {
                     Log.i(TAG, "Sending public key");
                     sendKey(key, address);
+
+                    int flags = b.getInt(EncrypText.FLAGS, -1);
+                    if(flags == EncrypText.FLAG_GENERATE_SECRET_KEY) {
+                        generateSecretKey(address);
+                    }
                 }
                 else if(address != null && pos != -1)
                 {
@@ -193,6 +192,27 @@ public class SenderSvc extends Service {
         }
     }
 
+    private void generateSecretKey(String address) {
+        Log.i(TAG, "Generating secret key");
+        SecretKey secretKey;
+        try {
+            secretKey = cryptor.finalize(address);
+        }
+        catch (InvalidKeyException | NoSuchAlgorithmException | CertificateException | IOException | KeyStoreException e) {
+            Log.e(TAG, "Error generating secret key", e);
+            Toast.makeText(this, "Could not generate secret key from exchange", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if ((Conversation.isActive()) && (Conversation.currentNumber().equals(address)))
+        {
+            Log.i(TAG, "Passing secret key to Conversation");
+            Intent in = new Intent(this, Conversation.class);
+            in.putExtra(EncrypText.KEY, secretKey);
+            in.setFlags(872415232); //Basically, clear top | single top | new task, as I recall.
+            startActivity(in);
+        }
+    }
 
     private void sendKey(Key key, String address)
     {
@@ -235,7 +255,6 @@ public class SenderSvc extends Service {
 
     private void sendMessage(ConversationEntry item, int place, Key key)
     {
-
         String address = item.getNumber();
 
         if(!currentConv.equals(address))

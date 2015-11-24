@@ -1,10 +1,17 @@
 package bmoore.encryptext;
 
+import java.io.IOException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
 import java.util.GregorianCalendar;
 import java.util.Date;
 import android.app.Application;
 import android.content.Context;
 import android.telephony.TelephonyManager;
+import android.util.Log;
+import android.widget.Toast;
 
 
 /**
@@ -42,7 +49,15 @@ public class EncrypText extends Application
     public static final String NAME = "n";
     public static final String QUIT_FLAG = "q";
     public static final String PDUS = "pdus";
+    public static final String FLAGS = "f";
+    public static final String DATE = "d";
+    public static final int FLAG_REMOVE_PUBLIC_KEY = 117;
+    public static final int FLAG_GENERATE_SECRET_KEY = 1138;
 
+    public static final int PUBLIC_KEY_PDU = 1;
+    public static final int AES_ENCRYPTED_PDU = 2;
+
+    private static final String TAG = "EncrypText";
 
 
     @Override
@@ -55,10 +70,16 @@ public class EncrypText extends Application
         TelephonyManager mgr = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         phoneNumber = formatNumber(mgr.getLine1Number());
 
+        cal = new GregorianCalendar();
 		manager = new Files(this, phoneNumber);
         cryptor = new Cryptor(manager);
-        cryptor.initPublicCrypto();
-        cal = new GregorianCalendar();
+
+        try {
+            cryptor.initPublicCrypto();
+        } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException | InvalidAlgorithmParameterException e) {
+            Log.e(TAG, "Error initializing public key cryptography", e);
+            Toast.makeText(this, "Error initializing public key cryptography", Toast.LENGTH_SHORT).show();
+        }
 	}
 	
 	private String formatNumber(String number)

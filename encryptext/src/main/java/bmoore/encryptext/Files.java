@@ -25,7 +25,10 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.Scanner;
 import java.util.TreeMap;
+import java.util.regex.Pattern;
 
 import javax.crypto.SecretKey;
 
@@ -42,6 +45,8 @@ public class Files
     String address;
     private static final String SECRET_KEYSTORE_LOCATION = "secretkeystore.ks";
     private static final String PUBLIC_KEYSTORE_LOCATION = "publickeystore.ks";
+
+    private static final String KEY_EXCHANGE_REQUEST_FILE = "keyExchangeRequests.dat";
 
     public Files(Context con, String address)
     {
@@ -87,23 +92,13 @@ public class Files
         return keyDB;
     }
 
-    void saveKeyStore(KeyStore keyDB, final char[] PASSWORD)
+    void saveKeyStore(KeyStore keyDB, final char[] PASSWORD) throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException
     {
-        try
-        {
-            if(keyDB.getType().equals("PKCS12"))
-                keyDB.store(context.openFileOutput(PUBLIC_KEYSTORE_LOCATION, Context.MODE_PRIVATE), PASSWORD);
-            else
-                keyDB.store(context.openFileOutput(SECRET_KEYSTORE_LOCATION, Context.MODE_PRIVATE), PASSWORD);
-        }
-        catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException e)
-        {
-            e.printStackTrace();
-        }
-
+        if(keyDB.getType().equals("PKCS12"))
+            keyDB.store(context.openFileOutput(PUBLIC_KEYSTORE_LOCATION, Context.MODE_PRIVATE), PASSWORD);
+        else
+            keyDB.store(context.openFileOutput(SECRET_KEYSTORE_LOCATION, Context.MODE_PRIVATE), PASSWORD);
     }
-
-
 
 	private Bitmap findBitmap(String phone, ContentResolver cr)
 	{
@@ -115,6 +110,8 @@ public class Files
 			do
 				ID = c.getLong(0);
 			while (c.moveToNext());
+
+        c.close();
 		
 		Bitmap pic = null;
 		if (ID != -1)
@@ -153,8 +150,6 @@ public class Files
 				else
 					conversation.add(new ConversationEntry(parts[0], null, parts[1], parts[2], other));
 			}
-
-
 		}
 		catch (IOException e)
 		{
@@ -226,11 +221,11 @@ public class Files
 	{
         long location = -1;
 
-		if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED_READ_ONLY))
-			return location;
+        if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED_READ_ONLY))
+            return location;
 
-		try
-		{
+        try
+        {
             RandomAccessFile f = new
                     RandomAccessFile(c.getFileStreamPath(number + ".dat"), "rw");
 
@@ -238,12 +233,12 @@ public class Files
                 f.seek(f.length()); //just append
             else
                 f.seek(pos);
-			
-			f.write((item.getMessage() + "\n").getBytes());
-			f.write((item.getName() + "\n").getBytes());
+
+            f.write((item.getMessage() + "\n").getBytes());
+            f.write((item.getName() + "\n").getBytes());
             location = f.getFilePointer();
-			f.write((item.getDate()).getBytes());
-			f.write("\r\n".getBytes());
+            f.write((item.getDate()).getBytes());
+            f.write("\r\n".getBytes());
 
             readPositions.put(number, f.length()); //update last effective read position
             //we use length because we might have gone back to update a missed message but we
@@ -251,12 +246,12 @@ public class Files
             //we also have this line here because it's cheaper to do this than reopen the file
             //in getLastReadPosition
 
-			f.close();
-		}
-		catch (IOException localIOException)
-		{
-			localIOException.printStackTrace();
-		}
+            f.close();
+        }
+        catch (IOException localIOException)
+        {
+            localIOException.printStackTrace();
+        }
 
         return location;
 	}
@@ -293,5 +288,55 @@ public class Files
             return temp;
         else
             return 0;
+    }
+
+    public void createPublicKeyExchangeIndicator(String address) throws IOException {
+        FileOutputStream f = context.openFileOutput(address + ".exchange", Context.MODE_PRIVATE);
+        f.close();
+    }
+
+    public void generateKeyRequestEntry(Date date, String address, String name, Contact.KeyStatus status, Context c)
+    {
+        if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED_READ_ONLY))
+            return;
+
+        try
+        {
+            RandomAccessFile f = new
+                    RandomAccessFile(c.getFileStreamPath(KEY_EXCHANGE_REQUEST_FILE), "rw");
+
+            f.seek(f.length()); //just append
+            f.write((address + "\n").getBytes());
+            f.write((status.toString() + "\n").getBytes());
+            f.write((date.toString() + "\n").getBytes());
+            f.write((name + "\n").getBytes());
+            f.write("\r\n".getBytes());
+
+            f.close();
+        }
+        catch (IOException localIOException)
+        {
+            localIOException.printStackTrace();
+        }
+    }
+
+    public void updateKeyRequestEntry(String address, Contact.KeyStatus status, Context c)
+    {
+        try {
+
+            Scanner s = new Scanner(c.getFileStreamPath(KEY_EXCHANGE_REQUEST_FILE));
+            s.useDelimiter(address);
+            long filePoint = s.next().getBytes().length; //surely terrible performance!! Will probably switch to SQLite
+
+            RandomAccessFile f = new
+                    RandomAccessFile(c.getFileStreamPath(KEY_EXCHANGE_REQUEST_FILE), "rw");
+
+            f.seek(filePoint);
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

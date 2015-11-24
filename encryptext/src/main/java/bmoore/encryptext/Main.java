@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ListView;
 import java.util.ArrayList;
@@ -69,14 +70,14 @@ public class Main extends ListActivity
 	public void onCreate(Bundle savedInstanceState)
 	{
 		super.onCreate(savedInstanceState);
-		setContentView(R.layout.activity_encryp_text);
+		setContentView(R.layout.home_screen);
 		
 		active = true;
         created = true;
 		
 		app = ((EncrypText)getApplication());
 		manager = app.getFileManager();
-		adapter = new ConversationAdapter(this, R.layout.activity_encryp_text,
+		adapter = new ConversationAdapter(this, R.layout.home_screen,
                 new ArrayList<ConversationEntry>());
 		
 		
@@ -94,15 +95,33 @@ public class Main extends ListActivity
 	}
 
 	/**
-	 * Auto-generated method to show the settings menu. Currently not in use
+	 * Auto-generated method to show the settings menu. For use with action bar
 	 * 
 	 * @param menu instance
 	 */
 	public boolean onCreateOptionsMenu(Menu menu)
 	{
-		getMenuInflater().inflate(R.menu.activity_encryp_text, menu);
+		getMenuInflater().inflate(R.menu.home_menu_options, menu);
 		return true;
 	}
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.action_view_requests:
+                startActivity(new Intent(this, KeyRequests.class));
+                return true;
+
+            case R.id.action_settings:
+                return true;
+
+            default:
+                // If we got here, the user's action was not recognized.
+                // Invoke the superclass to handle it.
+                return super.onOptionsItemSelected(item);
+
+        }
+    }
 
 	/**
 	 * Sets the static variable created to false, to indicate that there
