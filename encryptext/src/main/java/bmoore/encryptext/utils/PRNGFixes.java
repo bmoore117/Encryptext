@@ -1,4 +1,4 @@
-package bmoore.encryptext;
+package bmoore.encryptext.utils;
 
 /**
  * Created by ben on 8/20/13.

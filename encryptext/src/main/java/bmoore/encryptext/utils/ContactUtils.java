@@ -1,4 +1,4 @@
-package bmoore.encryptext;
+package bmoore.encryptext.utils;
 
 import android.content.ContentResolver;
 import android.content.Context;

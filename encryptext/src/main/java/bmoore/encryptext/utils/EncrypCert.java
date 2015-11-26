@@ -1,4 +1,4 @@
-package bmoore.encryptext;
+package bmoore.encryptext.utils;
 
 import java.security.PublicKey;
 import java.security.cert.Certificate;

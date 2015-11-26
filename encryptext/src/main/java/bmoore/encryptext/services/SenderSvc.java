@@ -1,4 +1,4 @@
-package bmoore.encryptext;
+package bmoore.encryptext.services;
 
 import android.app.PendingIntent;
 import android.app.Service;
@@ -25,6 +25,15 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.SecretKey;
 
+import bmoore.encryptext.model.MessageConfirmation;
+import bmoore.encryptext.ui.ConversationActivity;
+import bmoore.encryptext.model.ConversationEntry;
+import bmoore.encryptext.utils.Cryptor;
+import bmoore.encryptext.EncrypText;
+import bmoore.encryptext.utils.DBUtils;
+import bmoore.encryptext.ui.HomeActivity;
+import bmoore.encryptext.utils.InvalidKeyTypeException;
+
 
 public class SenderSvc extends Service {
 
@@ -36,10 +45,10 @@ public class SenderSvc extends Service {
     private static final int HEADER_SIZE = 4;
     private final IBinder binder = new SenderBinder();
     private volatile LinkedList<Bundle> jobs;
-    private TreeMap<String, TreeMap<Integer, long[]>> partialConfs;
+    private TreeMap<String, TreeMap<Integer, MessageConfirmation>> partialConfs;
     private TreeMap<String, TreeMap<Integer, String>> confirmTimes;
     private int processingStatus, sequenceNo;
-    private Files manager;
+    private DBUtils dbUtils;
     private EncrypText app;
     private SmsManager mgr;
     private String currentConv;
@@ -82,7 +91,7 @@ public class SenderSvc extends Service {
         processingStatus = 0;
         app = ((EncrypText) getApplication());
         cryptor = app.getCryptor();
-        manager = app.getFileManager();
+        dbUtils = app.getDbUtils();
         currentConv = "";
         mgr = SmsManager.getDefault();
 
@@ -185,7 +194,7 @@ public class SenderSvc extends Service {
 
     private void tryQuit()
     {
-        if(!Main.isCreated() && !Conversation.isCreated() && processingStatus == 0)
+        if(!HomeActivity.isCreated() && !ConversationActivity.isCreated() && processingStatus == 0)
         {
             Log.i(TAG, "Quit Check Passed");
             stopSelf();
@@ -198,16 +207,16 @@ public class SenderSvc extends Service {
         try {
             secretKey = cryptor.finalize(address);
         }
-        catch (InvalidKeyException | NoSuchAlgorithmException | CertificateException | IOException | KeyStoreException e) {
+        catch (InvalidKeyException | InvalidKeyTypeException e) {
             Log.e(TAG, "Error generating secret key", e);
             Toast.makeText(this, "Could not generate secret key from exchange", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        if ((Conversation.isActive()) && (Conversation.currentNumber().equals(address)))
+        if ((ConversationActivity.isActive()) && (ConversationActivity.currentNumber().equals(address)))
         {
-            Log.i(TAG, "Passing secret key to Conversation");
-            Intent in = new Intent(this, Conversation.class);
+            Log.i(TAG, "Passing secret key to ConversationActivity");
+            Intent in = new Intent(this, ConversationActivity.class);
             in.putExtra(EncrypText.KEY, secretKey);
             in.setFlags(872415232); //Basically, clear top | single top | new task, as I recall.
             startActivity(in);
@@ -305,9 +314,10 @@ public class SenderSvc extends Service {
             }
         }
 
-        long pos = manager.writeSMS(address, item, -1, this);
+        long messageId = dbUtils.storeMessage(item);
+        //long pos = manager.writeSMS(address, item, -1, this);
 
-        setupMessageConfirmation(address, place, message.length, pos);
+        setupMessageConfirmation(address, place, messageId, message.length);
 
         for(byte[] pdu : message)
         {
@@ -323,18 +333,14 @@ public class SenderSvc extends Service {
         sequenceNo++; //next sequence number
     }
 
-    private void setupMessageConfirmation(String number, int pos, int parts, long filePoint)
+    private void setupMessageConfirmation(String number, int place, long messageId, int parts)
     {
         Log.i(TAG, "Adding message");
         if(!partialConfs.containsKey(number))
-            partialConfs.put(number, new TreeMap<Integer, long[]>());
-
-        long[] array = new long[2];
-        array[0] = parts;
-        array[1] = filePoint;
+            partialConfs.put(number, new TreeMap<Integer, MessageConfirmation>());
 
         Log.i(TAG, "setupMessageConfirmation Processing status " + processingStatus);
-        partialConfs.get(number).put(pos, array);
+        partialConfs.get(number).put(place, new MessageConfirmation(parts, messageId));
         processingStatus++;
         Log.i(TAG, "setupMessageConfirmation Processing status " + processingStatus);
     }
@@ -343,11 +349,12 @@ public class SenderSvc extends Service {
     {
         Log.i(TAG, number + " " + pos);
 
-        long partsConfirmed = partialConfs.get(number).get(pos)[0];
-        if(partsConfirmed > 0)
-            partsConfirmed--;
+        MessageConfirmation confirmation = partialConfs.get(number).get(pos);
 
-        if(partsConfirmed == 0)
+        if(confirmation.getMessageParts() > 0)
+            confirmation.setMessageParts(confirmation.getMessageParts() - 1);
+
+        if(confirmation.getMessageParts() == 0)
         {
             String time = buildDate();
 
@@ -356,17 +363,17 @@ public class SenderSvc extends Service {
 
             confirmTimes.get(number).put(pos, time);
 
-            manager.writeConf(number, time, partialConfs.get(number).get(pos)[1], this);
+            dbUtils.confirmMessageSent(time, confirmation.getMessageId());
 
             Log.i(TAG, "confirmMessagePart Processing status " + processingStatus);
             partialConfs.get(number).remove(pos);
             processingStatus--;
             Log.i(TAG, "confirmMessagePart Processing status " + processingStatus);
 
-            if(Conversation.isActive() &&
-                    Conversation.currentNumber().equals(number))
+            if(ConversationActivity.isActive() &&
+                    ConversationActivity.currentNumber().equals(number))
             {
-                Intent in = new Intent(this, Conversation.class);
+                Intent in = new Intent(this, ConversationActivity.class);
                 in.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
                 in.putExtra(EncrypText.THREAD_POSITION, pos);
@@ -374,12 +381,12 @@ public class SenderSvc extends Service {
 
                 startActivity(in);
             }
-            else if(!Conversation.isActive() && Conversation.currentNumber().equals(number))
-                Conversation.markNewConfs();
+            else if(!ConversationActivity.isActive() && ConversationActivity.currentNumber().equals(number))
+                ConversationActivity.markNewConfs();
         }
     }
 
-    TreeMap<Integer, String> getConfs(String number)
+    public TreeMap<Integer, String> getConfs(String number)
     {
         return confirmTimes.get(number);
     }

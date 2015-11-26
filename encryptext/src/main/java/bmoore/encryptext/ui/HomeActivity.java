@@ -1,4 +1,4 @@
-package bmoore.encryptext;
+package bmoore.encryptext.ui;
 
 import android.app.ListActivity;
 import android.content.Intent;
@@ -7,8 +7,19 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ListView;
 import java.util.ArrayList;
+import java.util.List;
+
+import bmoore.encryptext.EncrypText;
+import bmoore.encryptext.model.ConversationAdapter;
+import bmoore.encryptext.model.ConversationEntry;
+import bmoore.encryptext.utils.DBUtils;
+import bmoore.encryptext.utils.Files;
+import bmoore.encryptext.R;
+import bmoore.encryptext.services.ReceiverSvc;
+import bmoore.encryptext.services.SenderSvc;
 
 
 /**
@@ -18,15 +29,15 @@ import java.util.ArrayList;
  * @author Benjamin Moore
  *
  */
-public class Main extends ListActivity
+public class HomeActivity extends ListActivity
 {
 	private static boolean active = false;
     private static boolean created = false;
 	private static boolean newData = false;
 	private EncrypText app;
 	private ConversationAdapter adapter;
-	private Files manager;
-    private static final String TAG = "Main";
+	private DBUtils dbUtils;
+    private static final String TAG = "HomeActivity";
 
 	/**
 	 * Returns whether the activity is running or paused
@@ -42,7 +53,7 @@ public class Main extends ListActivity
         return created;
     }
 
-    static void setCreated()
+    public static void setCreated()
     {
         created = true;
     }
@@ -70,28 +81,43 @@ public class Main extends ListActivity
 	public void onCreate(Bundle savedInstanceState)
 	{
 		super.onCreate(savedInstanceState);
-		setContentView(R.layout.home_screen);
-		
-		active = true;
-        created = true;
-		
-		app = ((EncrypText)getApplication());
-		manager = app.getFileManager();
-		adapter = new ConversationAdapter(this, R.layout.home_screen,
-                new ArrayList<ConversationEntry>());
-		
-		
-		adapter.addAll(manager.readPreviews(this, getContentResolver()));
-		
-		if(adapter.getCount() == 0)
-			adapter.add(new ConversationEntry("No conversations. Talk to someone!",
-                    null, null, null, null));
-		
-		setListAdapter(adapter);
+        setContentView(R.layout.home_screen);
 
-		
-		if (newData)
-			newData = false;
+        active = true;
+        created = true;
+
+        app = ((EncrypText)getApplication());
+        dbUtils = app.getDbUtils();
+        adapter = new ConversationAdapter(this, R.layout.home_screen,
+                new ArrayList<ConversationEntry>());
+
+
+        adapter.addAll(dbUtils.readPreviews());
+
+        if(adapter.getCount() == 0)
+            adapter.add(new ConversationEntry("No conversations. Talk to someone!",
+                    null, null, null, null));
+
+        setListAdapter(adapter);
+
+        ListView list = (ListView) findViewById(android.R.id.list); //how you reference that pesky bitch
+
+        list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                ConversationEntry item = (ConversationEntry)parent.getAdapter().getItem(position);
+
+                String number = item.getNumber();
+                String name = item.getName();
+
+                if(number != null && name != null)
+                    startConversationView(number, name);
+            }
+        });
+
+
+        if (newData)
+            newData = false;
 	}
 
 	/**
@@ -109,7 +135,7 @@ public class Main extends ListActivity
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.action_view_requests:
-                startActivity(new Intent(this, KeyRequests.class));
+                startActivity(new Intent(this, KeyRequestsActivity.class));
                 return true;
 
             case R.id.action_settings:
@@ -150,29 +176,6 @@ public class Main extends ListActivity
 
 		super.onDestroy();
 	}
-
-	/**
-	 * Event handler causing the load of a conversation. When the user taps on a thread item from the
-	 * main screen, this method is called, the data behind the thread entry retrieved, and fed into 
-	 * a method which starts the thread view.
-	 * 
-	 * @param l - the item clicked
-	 * @param v - a less generic version of the item clicked
-	 * @param pos - an int specifying which item in the list this is. Corresponds with underlying data's position in
-	 * adapter.
-	 * @param id - a long specifying the ID of I don't know what. Unused.
-	 */
-	public void onListItemClick(ListView l, View v, int pos, long id)
-	{
-		ConversationEntry item = (ConversationEntry)l.getAdapter().getItem(pos);
-
-        String number = item.getNumber();
-        String name = item.getName();
-
-        if(number != null && name != null)
-            startConversationView(number, name);
-	}
-
 	
 	/**
 	 * Method allowing this activity to receive messages from the rest of the app, via an Intent.
@@ -213,7 +216,7 @@ public class Main extends ListActivity
 		active = true;
 		if (newData)
 		{
-			ArrayList<ConversationEntry> previews = manager.readPreviews(this, getContentResolver());
+			List<ConversationEntry> previews = dbUtils.readPreviews();
 			adapter.clear();
 			adapter.addAll(previews);
 			newData = false;
@@ -229,7 +232,7 @@ public class Main extends ListActivity
 	 */
 	public void startConversationView(View v)
 	{
-		startActivity(new Intent(this, Conversation.class));
+		startActivity(new Intent(this, ConversationActivity.class));
 	}
 
 	/**
@@ -240,7 +243,7 @@ public class Main extends ListActivity
 	 */
 	public void startConversationView(String number, String name)
 	{
-		Intent in = new Intent(this, Conversation.class);
+		Intent in = new Intent(this, ConversationActivity.class);
 		in.putExtra(EncrypText.ADDRESS, number);
 		in.putExtra(EncrypText.NAME, name);
 		startActivity(in);
@@ -263,8 +266,8 @@ public class Main extends ListActivity
 		{
 			if (toReplace.equals(adapter.getItem(i).getNumber()))
 			{
-				item.setPhoto(adapter.data.get(i).getPhoto());
-				adapter.remove(adapter.data.get(i));
+				item.setPhoto(adapter.getData().get(i).getPhoto());
+				adapter.remove(adapter.getData().get(i));
 				adapter.add(item);
 
 				return;

@@ -1,11 +1,10 @@
-package bmoore.encryptext;
+package bmoore.encryptext.model;
 
 import android.graphics.Bitmap;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-public class ConversationEntry
-implements Parcelable
+public class ConversationEntry implements Parcelable
 {
 	public static final Creator<ConversationEntry> CREATOR = new Creator<ConversationEntry>()
 	{
@@ -19,22 +18,23 @@ implements Parcelable
 			return new ConversationEntry[paramAnonymousInt];
 		}
 	};
-	private String number;
+
+    private long messageId;
 	private String message;
+    private String number;
 	private String name;
+    private String date;
 	private Bitmap photo;
-	private String date;
+
 
 	public ConversationEntry()
 	{
-		this.message = "";
-		this.name = "";
-		this.number = null;
-		this.photo = null;
+		this(-1, null, null, null, null, null);
 	}
 
 	public ConversationEntry(Parcel p)
 	{
+        this.messageId = p.readLong();
 		this.message = p.readString();
 		this.number = p.readString();
 		this.name = p.readString();
@@ -45,17 +45,19 @@ implements Parcelable
 	/**
 	 * For reading from file
 	 * @param message
-	 * @param number
 	 * @param name
+	 * @param date
 	 * @param pic
 	 */
-	public ConversationEntry(String message, String number, String name, Bitmap pic)
+	public ConversationEntry(long messageId, String message, String name, String date, Bitmap pic)
 	{
-		this.message = message;
-		this.name = name;
-		this.number = number;
-		this.photo = pic;
+		this(messageId, message, null, name, date, pic);
 	}
+
+    public ConversationEntry(String message, String number, String name, String date, Bitmap pic)
+    {
+        this(-1, message, number, name, date, pic);
+    }
 	
 	/**
 	 * When created otherwise
@@ -65,7 +67,7 @@ implements Parcelable
 	 * @param date
 	 * @param pic
 	 */
-	public ConversationEntry(String message, String number, String name, String date, Bitmap pic)
+	public ConversationEntry(long messageId, String message, String number, String name, String date, Bitmap pic)
 	{
 		this.message = message;
 		this.name = name;
@@ -124,17 +126,21 @@ implements Parcelable
 		this.photo = paramBitmap;
 	}
 
+    public long getMessageId() {
+        return messageId;
+    }
+
+    public void setMessageId(long messageId) {
+        this.messageId = messageId;
+    }
+
 	public void writeToParcel(Parcel p, int paramInt)
 	{
-		p.writeString(this.message);
-		p.writeString(this.number);
-		p.writeString(this.name);
-		p.writeString(this.date);
-		p.writeParcelable(this.photo, 0);
+        p.writeLong(messageId);
+		p.writeString(message);
+		p.writeString(number);
+		p.writeString(name);
+		p.writeString(date);
+		p.writeParcelable(photo, 0);
 	}
 }
-
-/* Location:           C:\Users\Benjamin Moore\Dropbox\App\Code Recovery\classes_dex2jar.jar
- * Qualified Name:     com.encryptext.ConversationEntry
- * JD-Core Version:    0.6.2
- */

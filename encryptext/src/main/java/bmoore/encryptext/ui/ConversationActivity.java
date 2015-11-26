@@ -1,4 +1,4 @@
-package bmoore.encryptext;
+package bmoore.encryptext.ui;
 
 import android.app.AlertDialog;
 import android.app.ListActivity;
@@ -27,11 +27,23 @@ import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.TreeMap;
 
 import javax.crypto.SecretKey;
+
+import bmoore.encryptext.model.Contact;
+import bmoore.encryptext.model.ContactAdapter;
+import bmoore.encryptext.model.ConversationAdapter;
+import bmoore.encryptext.model.ConversationEntry;
+import bmoore.encryptext.utils.ContactUtils;
+import bmoore.encryptext.utils.Cryptor;
+import bmoore.encryptext.EncrypText;
+import bmoore.encryptext.utils.DBUtils;
+import bmoore.encryptext.R;
+import bmoore.encryptext.services.SenderSvc;
+import bmoore.encryptext.utils.InvalidKeyTypeException;
 
 /**
  * This class handles the selection of a person to send a text to, the sending of texts, and the display of sent
@@ -41,9 +53,9 @@ import javax.crypto.SecretKey;
  * @author Benjamin Moore
  *
  */
-public class Conversation extends ListActivity
+public class ConversationActivity extends ListActivity
 {
-    private static final String TAG = "Conversation";
+    private static final String TAG = "ConversationActivity";
     private static final int HALF = 50;
     private static final int FULL = 100;
 	private static boolean active = false;
@@ -56,7 +68,7 @@ public class Conversation extends ListActivity
 	private static String number = "";
 	private Bitmap me;
 	private Bitmap other;
-    private Files manager;
+    private DBUtils dbUtils;
     private Cryptor cryptor;
     private SenderSvc senderSvc;
     private SecretKey secretKey;
@@ -135,12 +147,17 @@ public class Conversation extends ListActivity
                         Bitmap thumb = BitmapFactory.decodeStream(
                                 Contacts.openContactPhotoInputStream(getContentResolver(), picPath));
 
-                        secretKey = cryptor.loadSecretKey(formatNumber(number));
+                        try {
+                            secretKey = cryptor.loadSecretKey(formatNumber(number));
 
-                        if(secretKey == null) //might have to re-engineer contact to store secret key
-                            suggestions.add(new Contact(name, number, thumb, HALF));
-                        else
-                            suggestions.add(new Contact(name, number, thumb, FULL));
+                            if (secretKey == null) //might have to re-engineer contact to store secret key
+                                suggestions.add(new Contact(name, number, thumb, HALF));
+                            else
+                                suggestions.add(new Contact(name, number, thumb, FULL));
+                        } catch (InvalidKeyTypeException e) {
+                            Log.e(TAG, "Unable to load secret key", e);
+                            Toast.makeText(ConversationActivity.this, "Unable to load secret key", Toast.LENGTH_SHORT).show();
+                        }
                     }
                     while (c.moveToNext());
                 }
@@ -202,7 +219,7 @@ public class Conversation extends ListActivity
 		return created;
 	}
 
-    static void setCreated()
+    public static void setCreated()
     {
         created = true;
     }
@@ -271,9 +288,9 @@ public class Conversation extends ListActivity
         conversationChanged = false;
 		
 		EncrypText app = ((EncrypText)getApplication());
-		manager = app.getFileManager();
+		dbUtils = app.getDbUtils();
         cryptor = app.getCryptor();
-		adapter = new ConversationAdapter(this, R.layout.convitem, new ArrayList<ConversationEntry>());
+		adapter = new ConversationAdapter(this, R.layout.conversation_item, new ArrayList<ConversationEntry>());
 		//list = (ListView) findViewById(android.R.id.list); //how you reference that pesky bitch
 		to = (AutoCompleteTextView) findViewById(R.id.phone);
         messageBox = (EditText) findViewById(R.id.message);
@@ -292,7 +309,7 @@ public class Conversation extends ListActivity
              */
             public void onItemClick(AdapterView<?> parent, View view, int pos, long id) {
                 Contact c = contacts.getItem(pos);
-                Conversation.number = formatNumber(c.getNumber());
+                ConversationActivity.number = formatNumber(c.getNumber());
                 updateTo(c.getName());
                 other = ContactUtils.getBitmap(getContentResolver(), number);
 
@@ -306,14 +323,14 @@ public class Conversation extends ListActivity
                         builder.setTitle("Send key exchange request to " + c.getName() + "?");
                         builder.setMessage("Like a friend request, this action will have to be confirmed or denied by the the other person. If they respond to the request, " +
                                 "you will both exchange your public keys and create a shared private key which will be used to encrypt your actual messages. " +
-                                "Tap Yes to send the other person a key exchange request with your public key and close the conversation window. For subsequent conversations this dialog will not be shown");
+                                "Tap Yes to send the other person a key exchange request with your public key and return to the home screen. For subsequent conversations this dialog will not be shown");
 
                         builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialogInterface, int buttonClicked) {
                                 getSharedPreferences(EncrypText.class.getSimpleName(), MODE_PRIVATE).edit()
                                         .putBoolean("firstTimeExchange", false)
-                                        .putString(number, "inNegotiation").commit();
+                                        .putString(number, "inNegotiation").apply();
                                 startKeyExchange();
                             }
                         });
@@ -329,7 +346,7 @@ public class Conversation extends ListActivity
                     }
                     else
                     {
-                        Toast.makeText(Conversation.this, "Sending public key", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(ConversationActivity.this, "Sending public key", Toast.LENGTH_SHORT).show();
                         startKeyExchange();
                     }
                 }
@@ -367,12 +384,17 @@ public class Conversation extends ListActivity
 		{
 			number = b.getString(EncrypText.ADDRESS);
 			other = ContactUtils.getBitmap(getContentResolver(), number);
-			adapter.addAll(manager.readConv(this, number, 0, me, other));
+			adapter.addAll(dbUtils.loadConversation(number, 0));
 			
 			name = b.getString(EncrypText.NAME);
 			to.setVisibility(View.GONE);
 
-            secretKey = cryptor.loadSecretKey(number);
+            try {
+                secretKey = cryptor.loadSecretKey(number);
+            } catch (InvalidKeyTypeException e) {
+                Log.e(TAG, "Unable to load secret key", e);
+                Toast.makeText(this, "Unable to load secret key", Toast.LENGTH_SHORT).show();
+            }
 		}
 		
 		setListAdapter(adapter);
@@ -428,7 +450,7 @@ public class Conversation extends ListActivity
         newData = false;
         number = "";
 
-        manager.resetPointer(number + ".dat");
+        //manager.resetPointer(number + ".dat");
         //unbindService(receiverConnection);
         unbindService(senderConnection);
 		super.onDestroy();
@@ -450,7 +472,7 @@ public class Conversation extends ListActivity
 
         if(b == null)
         {
-            Log.v(TAG, "Bundle passed to Conversation was null");
+            Log.v(TAG, "Bundle passed to ConversationActivity was null");
             return;
         }
 
@@ -484,7 +506,7 @@ public class Conversation extends ListActivity
 		else if (address != null) //for jumping to new conv via notification
 		{
 			adapter.clear();
-			ArrayList<ConversationEntry> conv = manager.readConv(this, address, 0, me, other);
+			List<ConversationEntry> conv = dbUtils.loadConversation(number, 0);
 			adapter.addAll(conv);
 			AutoCompleteTextView To = (AutoCompleteTextView)findViewById(R.id.phone);
 			number = address;
@@ -521,14 +543,14 @@ public class Conversation extends ListActivity
 	{
 		active = false;
 
-        lastReadPosition = manager.getLastReadPosition(number);
+        //lastReadPosition = manager.getLastReadPosition(number);
 
 		if (adapter.getCount() > 0 && conversationChanged)
 		{	
-			ConversationEntry item = adapter.getItem(adapter.getCount() - 1);
+			/*ConversationEntry item = adapter.getItem(adapter.getCount() - 1);
 			manager.writePreview(new ConversationEntry(item.getMessage(), number, name,
-                    item.getDate(), null), this);
-			Main.setNewData();
+                    item.getDate(), null), this);*/
+			HomeActivity.setNewData();
             conversationChanged = false;
 		}
 		super.onPause();
@@ -568,8 +590,7 @@ public class Conversation extends ListActivity
 		if (newData)
 		{
             //int shift = findShift();
-			ArrayList<ConversationEntry> newMessages = manager.readConv(this,
-                    number, lastReadPosition, me, other);
+			List<ConversationEntry> newMessages = dbUtils.loadConversation(number, adapter.getData().get(adapter.getData().size() - 1).getMessageId());
 
 			this.adapter.addAll(newMessages);
 
@@ -605,7 +626,7 @@ public class Conversation extends ListActivity
 
             String text = editable.toString();
 
-            ConversationEntry item = new ConversationEntry(text, number, "Me", "Sending************", me);
+            ConversationEntry item = new ConversationEntry(text, number, "Me", "Sending", me);
 
             Bundle b = new Bundle();
             b.putParcelable(EncrypText.THREAD_ITEM, item);

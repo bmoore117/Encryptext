@@ -1,4 +1,4 @@
-package bmoore.encryptext;
+package bmoore.encryptext.model;
 
 import android.graphics.Bitmap;
 
@@ -13,7 +13,7 @@ public class Contact
     {
         REQUEST_SENT,
         NEEDS_REVIEW,
-        KEYS_EXCHNGD
+        KEYS_EXCAHNGED
     }
 
     public Contact()

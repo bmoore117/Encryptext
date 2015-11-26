@@ -10,7 +10,8 @@
         android:layout_centerHorizontal="true"
         android:stackFromBottom="true"
         android:transcriptMode="alwaysScroll"
-        tools:listitem="@android:layout/simple_list_item_2" >
+        tools:listitem="@android:layout/simple_list_item_2"
+        >
 
     </ListView>
 

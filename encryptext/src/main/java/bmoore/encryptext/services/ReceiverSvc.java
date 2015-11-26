@@ -1,4 +1,4 @@
-package bmoore.encryptext;
+package bmoore.encryptext.services;
 
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -7,24 +7,17 @@ import android.app.Service;
 import android.app.TaskStackBuilder;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.database.Cursor;
-import android.media.RingtoneManager;
-import android.net.Uri;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.provider.ContactsContract;
 import android.telephony.SmsMessage;
 import android.util.Log;
 import android.widget.RemoteViews;
 import android.widget.Toast;
 
-import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
-import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -38,13 +31,24 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.SecretKey;
 
+import bmoore.encryptext.EncrypText;
+import bmoore.encryptext.R;
+import bmoore.encryptext.model.Contact;
+import bmoore.encryptext.model.ConversationEntry;
+import bmoore.encryptext.ui.ConversationActivity;
+import bmoore.encryptext.ui.HomeActivity;
+import bmoore.encryptext.utils.ContactUtils;
+import bmoore.encryptext.utils.Cryptor;
+import bmoore.encryptext.utils.DBUtils;
+import bmoore.encryptext.utils.InvalidKeyTypeException;
+
 public class ReceiverSvc extends Service
 {
     private final IBinder binder = new ReceiverBinder();
 	private final int MAX_DATA_BYTES = 133;
     private final int HEADER_LENGTH = 4;
     private LinkedList<Intent> intents;
-    private Files manager;
+    private DBUtils dbUtils;
     private Cryptor cryptor;
     private EncrypText app;
     private int processingStatus;
@@ -149,15 +153,16 @@ public class ReceiverSvc extends Service
                 Log.i(TAG, temp);
 
                 try {
-                    if (cryptor.checkAndHold(key, address, ContactUtils.getContactName(getContentResolver(), address))) {
-                        showKeyExchangeNotification(address);
+                    String name = ContactUtils.getContactName(getContentResolver(), address);
+                    if (cryptor.checkAndHold(key, address, name)) {
+                        showKeyExchangeNotification(address, name);
 
                         thread.remove(Integer.valueOf(seq));
                         Log.i(TAG, "AddMsgFragment Processing status " + processingStatus);
                         processingStatus--;
                         Log.i(TAG, "AddMsgFragment Processing status " + processingStatus);
                     }
-                } catch (NoSuchAlgorithmException | CertificateException | IOException | KeyStoreException | InvalidKeySpecException e) {
+                } catch (NoSuchAlgorithmException | InvalidKeySpecException | InvalidKeyTypeException e) {
                     Log.e(TAG, "Could not store received public key", e);
                     Toast.makeText(this, "Could not store received public key", Toast.LENGTH_SHORT).show();
                 }
@@ -165,15 +170,20 @@ public class ReceiverSvc extends Service
             else if(header[0] == EncrypText.AES_ENCRYPTED_PDU) //2 for regular aes encrypted message
             {
                 Log.i(TAG, "Building complete message");
-                SecretKey key = cryptor.loadSecretKey(address);
-			    String message = buildMessage(thread.get(seq), key, seq);
+                try {
+                    SecretKey key = cryptor.loadSecretKey(address);
+                    String message = buildMessage(thread.get(seq), key, seq);
 
-			    thread.remove(Integer.valueOf(seq));
-                Log.i(TAG, "AddMsgFragment Processing status " + processingStatus);
-                processingStatus--;
-                Log.i(TAG, "AddMsgFragment Processing status " + processingStatus);
+                    thread.remove(Integer.valueOf(seq));
+                    Log.i(TAG, "AddMsgFragment Processing status " + processingStatus);
+                    processingStatus--;
+                    Log.i(TAG, "AddMsgFragment Processing status " + processingStatus);
 
-			    passOrNotify(buildThreadEntry(address, message));
+                    passOrNotify(buildThreadEntry(address, message));
+                } catch (InvalidKeyTypeException e) {
+                    Log.e(TAG, "Could not load secret key", e);
+                    Toast.makeText(this, "Could not load secret key", Toast.LENGTH_SHORT).show();
+                }
             }
 		}
 		else //add || update timer in slot
@@ -321,18 +331,15 @@ public class ReceiverSvc extends Service
 
     private void tryQuit()
     {
-        if(!Main.isCreated() && !Conversation.isCreated() && processingStatus == 0)
+        if(!HomeActivity.isCreated() && !ConversationActivity.isCreated() && processingStatus == 0)
         {
             Log.i(TAG, "Quit Check Passed");
             stopSelf();
         }
     }
 
-    private void showKeyExchangeNotification(String address)
+    private void showKeyExchangeNotification(String address, String name)
     {
-        RemoteViews contentView = new RemoteViews(getPackageName(), R.layout.key_exchange_notification);
-        contentView.setImageViewBitmap(R.id.keyNotificationPicture, ContactUtils.getBitmap(getContentResolver(), address));
-
         SharedPreferences prefs = getSharedPreferences(EncrypText.class.getSimpleName(), MODE_PRIVATE);
         Notification.Builder builder = new Notification.Builder(this);
 
@@ -344,27 +351,30 @@ public class ReceiverSvc extends Service
             try {
                 secretKey = cryptor.finalize(address);
             }
-            catch (InvalidKeyException | NoSuchAlgorithmException | CertificateException | IOException | KeyStoreException e) {
+            catch (InvalidKeyException | InvalidKeyTypeException e) {
                 Log.e(TAG, "Error generating secret key", e);
                 Toast.makeText(this, "Could not generate secret key from exchange", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            if ((Conversation.isActive()) && (Conversation.currentNumber().equals(address)))
+            if ((ConversationActivity.isActive()) && (ConversationActivity.currentNumber().equals(address)))
             {
-                Log.i(TAG, "Passing secret key to Conversation");
-                Intent in = new Intent(this, Conversation.class);
+                Log.i(TAG, "Passing secret key to ConversationActivity");
+                Intent in = new Intent(this, ConversationActivity.class);
                 in.putExtra(EncrypText.KEY, secretKey);
                 in.setFlags(872415232); //Basically, clear top | single top | new task, as I recall.
                 startActivity(in);
             }
 
-            builder.setContentText("Key swap with " + ContactUtils.getContactName(getContentResolver(), address) + " complete. You are ready to begin sending messages.");
+            builder.setContentTitle("Key exchange complete");
+            builder.setContentText("You are ready to begin sending messages to " + name);
             builder.setAutoCancel(true);
-            builder.setDefaults(Notification.DEFAULT_VIBRATE | Notification.DEFAULT_SOUND);
             builder.setLights(-16711936, 1000, 3000);
         } else {
-            contentView.setTextViewText(R.id.keyNotificationMessage, ContactUtils.getContactName(getContentResolver(), address) + " is requesting to swap public keys with you. Accept and reply with your key?");
+            RemoteViews contentView = new RemoteViews(getPackageName(), R.layout.key_exchange_notification);
+
+            contentView.setImageViewBitmap(R.id.keyNotificationPicture, ContactUtils.getBitmap(getContentResolver(), address));
+            contentView.setTextViewText(R.id.keyNotificationMessage, name + " is requesting to swap public keys with you. Accept and reply with your key?");
 
             Intent yes = new Intent(this, SenderSvc.class);
             yes.putExtra(EncrypText.KEY, cryptor.getMyPublicKey());
@@ -379,22 +389,23 @@ public class ReceiverSvc extends Service
             PendingIntent p2 = PendingIntent.getService(this, 0, no, PendingIntent.FLAG_UPDATE_CURRENT);
             contentView.setOnClickPendingIntent(R.id.noButton, p2);
 
-            Intent delete = new Intent(this, ReceiverSvc.class);
-            no.putExtra(EncrypText.DATE, new Date());
-
-            String name = ContactUtils.getContactName(getContentResolver(), address);
             if(name == null || "".equals(name))
                 name = address;
 
-            no.putExtra(EncrypText.NAME, name);
-            PendingIntent p3 = PendingIntent.getService(this, 0, no, PendingIntent.FLAG_NO_CREATE);
+            Intent delete = new Intent(this, ReceiverSvc.class);
+            delete.putExtra(EncrypText.DATE, new Date());
+            delete.putExtra(EncrypText.ADDRESS, address);
+            delete.putExtra(EncrypText.NAME, name);
+            PendingIntent p3 = PendingIntent.getService(this, 0, delete, PendingIntent.FLAG_UPDATE_CURRENT);
 
             builder.setDeleteIntent(p3);
-            builder.setSmallIcon(R.mipmap.ic_stat_notification);
             builder.setContent(contentView);
-            builder.setDefaults(Notification.DEFAULT_VIBRATE | Notification.DEFAULT_SOUND);
             builder.setAutoCancel(false);
         }
+
+        builder.setDefaults(Notification.DEFAULT_VIBRATE | Notification.DEFAULT_SOUND);
+        builder.setSmallIcon(R.mipmap.ic_stat_notification);
+
         ((NotificationManager) getSystemService(ReceiverSvc.NOTIFICATION_SERVICE)
         ).notify(address.hashCode(), builder.build());
     }
@@ -436,21 +447,22 @@ public class ReceiverSvc extends Service
 	{
         Log.i(TAG, "Writing message");
 		String address = item.getNumber();
-		manager.writeSMS(address, item, -1, this); //should add to end
+        dbUtils.storeMessage(item);
+		//manager.writeSMS(address, item, -1, this); //should add to end
 		
-		if ((Conversation.isActive()) && (Conversation.currentNumber().equals(address)))
+		if ((ConversationActivity.isActive()) && (ConversationActivity.currentNumber().equals(address)))
 		{
             Log.i(TAG, "Passing");
-			Intent in = new Intent(this, Conversation.class);
+			Intent in = new Intent(this, ConversationActivity.class);
 			in.putExtra(EncrypText.THREAD_ITEM, item);
 			in.setFlags(872415232); //Basically, clear top | single top | new task, as I recall.
 			startActivity(in);
 		}
-		else if (Main.isActive())
+		else if (HomeActivity.isActive())
 		{
-            manager.writePreview(item, this);
+            //manager.writePreview(item, this);
 
-			Intent in = new Intent(this, Main.class);
+			Intent in = new Intent(this, HomeActivity.class);
 			item.setAddress(address);
 			in.putExtra(EncrypText.THREAD_ITEM, item);
 			in.setFlags(872415232);
@@ -458,7 +470,7 @@ public class ReceiverSvc extends Service
 		}
 		else //notify
 		{
-            manager.writePreview(item, this);
+            //manager.writePreview(item, this);
 
 			if(!finishedTexts.containsKey(address))
 				finishedTexts.put(address, new ArrayList<ConversationEntry>());
@@ -468,21 +480,21 @@ public class ReceiverSvc extends Service
             processingStatus++;
             Log.i(TAG, "PassOrNotify Processing status " + processingStatus);
 			makeNotification(item);
-			Conversation.setNewData();
+			ConversationActivity.setNewData();
 		}
 	}
 
 	private void process(String address, String name)
 	{
-        Intent in = new Intent(this, Conversation.class);
+        Intent in = new Intent(this, ConversationActivity.class);
 
-		if ((Conversation.isCreated()) && (Conversation.currentNumber().equals(address)))
+		if ((ConversationActivity.isCreated()) && (ConversationActivity.currentNumber().equals(address)))
         {
 			in.putExtra(EncrypText.MULTIPLE_THREAD_ITEMS, this.finishedTexts.get(address));
             in.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(in);
         }
-		else if ((Conversation.isCreated()) && (!Conversation.currentNumber().equals(address)))
+		else if ((ConversationActivity.isCreated()) && (!ConversationActivity.currentNumber().equals(address)))
         {
             //file reload pass
 			in.putExtra(EncrypText.ADDRESS, address);
@@ -497,11 +509,11 @@ public class ReceiverSvc extends Service
             in.putExtra(EncrypText.NAME, name);
             in.addFlags(268435456);
             TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
-            stackBuilder.addParentStack(Conversation.class);
+            stackBuilder.addParentStack(ConversationActivity.class);
             stackBuilder.addNextIntent(in);
             stackBuilder.startActivities();
-            Main.setCreated();
-            Conversation.setCreated();
+            HomeActivity.setCreated();
+            ConversationActivity.setCreated();
         }
 
          Log.i(TAG, "Process Processing status " + processingStatus);
@@ -566,7 +578,7 @@ public class ReceiverSvc extends Service
 
         worker.start();
 		
-		manager = app.getFileManager();
+		dbUtils = app.getDbUtils();
         cryptor = app.getCryptor();
 		this.pendingTexts = new TreeMap<>();
 		this.finishedTexts = new TreeMap<>();
@@ -597,7 +609,7 @@ public class ReceiverSvc extends Service
                 else if(date != null && name != null && address != null)
                 {
                     Log.i(TAG, "Generating key request entry");
-                    manager.generateKeyRequestEntry(date, address, name, Contact.KeyStatus.NEEDS_REVIEW, this);
+                    dbUtils.generateKeyRequestEntry(address, name, Contact.KeyStatus.NEEDS_REVIEW, date.toString());
                 }
                 else if(name != null && address != null)
                 {
@@ -609,7 +621,7 @@ public class ReceiverSvc extends Service
                     Log.i(TAG, "Removing held public key");
                     try {
                         cryptor.removePublicKey(address);
-                    } catch (KeyStoreException | CertificateException | NoSuchAlgorithmException | IOException e) {
+                    } catch (InvalidKeyTypeException e) {
                         Log.e(TAG, "Error removing public key", e);
                         Toast.makeText(this, "Error removing public key", Toast.LENGTH_SHORT).show();
                     }

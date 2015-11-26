@@ -1,4 +1,4 @@
-package bmoore.encryptext;
+package bmoore.encryptext.utils;
 
 import android.content.ContentResolver;
 import android.content.Context;
@@ -8,29 +8,29 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.ContactsContract;
+
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.security.KeyPair;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.UnrecoverableEntryException;
-import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.List;
 import java.util.Scanner;
 import java.util.TreeMap;
-import java.util.regex.Pattern;
 
-import javax.crypto.SecretKey;
+import bmoore.encryptext.model.Contact;
+import bmoore.encryptext.model.ConversationEntry;
+import bmoore.encryptext.model.KeyRequest;
 
 
 /**
@@ -120,7 +120,7 @@ public class Files
 	}
 	
 
-	ArrayList<ConversationEntry> readConv(Context c, String number, long shift, Bitmap me,
+	public ArrayList<ConversationEntry> readConv(Context c, String number, long shift, Bitmap me,
                                                  Bitmap other)
 	{
 		ArrayList<ConversationEntry> conversation = new ArrayList<>();
@@ -159,13 +159,29 @@ public class Files
 		return conversation;
 	}
 
-	ArrayList<ConversationEntry> readPreviews(Context current, ContentResolver cr)
+	public ArrayList<ConversationEntry> readPreviews(Context current, ContentResolver cr)
 	{
 		ArrayList<ConversationEntry> previews = new ArrayList<ConversationEntry>();
 		
-		File[] files = current.getFilesDir().listFiles(new ConvoFilter());
+		File[] files = current.getFilesDir().listFiles(new FileFilter() {
+            @Override
+            public boolean accept(File pathname) {
+                return pathname.getName().endsWith("preview.dat");
+            }
+        });
 		
-		Arrays.sort(files, new DateComparator());
+		Arrays.sort(files, new Comparator<File>() {
+            @Override
+            public int compare(File lhs, File rhs) {
+                long l1 = lhs.lastModified();
+                long l2 = rhs.lastModified();
+                if (l1 > l2)
+                    return 1;
+                if (l1 < l2)
+                    return -1;
+                return 0;
+            }
+        });
 		
 		for(File f : files)
 		{
@@ -196,7 +212,7 @@ public class Files
 		return previews;
 	}
 
-	void writePreview(ConversationEntry item, Context c)
+	public void writePreview(ConversationEntry item, Context c)
 	{
 		if (Environment.getExternalStorageState().equals("mounted_ro"))
 			return;
@@ -217,7 +233,7 @@ public class Files
 		}
 	}
 
-	long writeSMS(String number, ConversationEntry item, long pos, Context c)
+	public long writeSMS(String number, ConversationEntry item, long pos, Context c)
 	{
         long location = -1;
 
@@ -276,12 +292,12 @@ public class Files
         }
     }
 
-    void resetPointer(String file)
+    public void resetPointer(String file)
     {
         readPositions.put(file, 0L);
     }
 
-    long getLastReadPosition(String file)
+    public long getLastReadPosition(String file)
     {
         Long temp = readPositions.get(file);
         if(temp != null)
@@ -320,23 +336,18 @@ public class Files
         }
     }
 
-    public void updateKeyRequestEntry(String address, Contact.KeyStatus status, Context c)
+    public void updateKeyRequestEntry(String address, Contact.KeyStatus status, Context c) throws FileNotFoundException, IOException
     {
-        try {
+        Scanner s = new Scanner(c.getFileStreamPath(KEY_EXCHANGE_REQUEST_FILE));
+        s.useDelimiter(address + "\n");
+        long filePoint = s.next().getBytes().length; //surely terrible performance!! Will probably switch to SQLite
 
-            Scanner s = new Scanner(c.getFileStreamPath(KEY_EXCHANGE_REQUEST_FILE));
-            s.useDelimiter(address);
-            long filePoint = s.next().getBytes().length; //surely terrible performance!! Will probably switch to SQLite
+        RandomAccessFile f = new
+                RandomAccessFile(c.getFileStreamPath(KEY_EXCHANGE_REQUEST_FILE), "rw");
 
-            RandomAccessFile f = new
-                    RandomAccessFile(c.getFileStreamPath(KEY_EXCHANGE_REQUEST_FILE), "rw");
+        f.seek(filePoint);
+        f.write(status.toString().getBytes());
 
-            f.seek(filePoint);
-
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        f.close();
     }
 }

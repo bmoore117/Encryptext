@@ -15,42 +15,45 @@
 
     <application android:name="bmoore.encryptext.EncrypText" android:icon="@mipmap/icon" android:label="@string/app_name" android:theme="@style/AppTheme" android:allowBackup="false">
 
-        <activity android:name="bmoore.encryptext.Main" android:label="@string/title_home_screen">
+        <activity android:name=".ui.HomeActivity" android:label="@string/title_home_screen">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <activity android:name="bmoore.encryptext.Conversation" android:label="@string/Title_Conversation_View"
-            android:parentActivityName="bmoore.encryptext.Main" android:launchMode="singleTop">
-
-            <meta-data android:name="android.support.PARENT_ACTIVITY" android:value="bmoore.encryptext.Main"/>
+        <activity android:name=".ui.ConversationActivity" android:label="@string/title_conversation_view"
+            android:parentActivityName=".ui.HomeActivity" android:launchMode="singleTop">
 
         </activity>
 
-        <service android:name="bmoore.encryptext.ReceiverSvc" android:exported="false"
+        <activity android:name=".ui.KeyRequestsActivity" android:label="@string/title_key_exchange_requests"
+            android:parentActivityName=".ui.HomeActivity">
+
+        </activity>
+
+        <service android:name=".services.ReceiverSvc" android:exported="false"
             android:permission="bmoore.example.encryptext.CALL_SERVICE">
             <intent-filter>
                 <action android:name="com.encryptext.ReceiverSvc" />
             </intent-filter>
         </service>
 
-        <service android:name="bmoore.encryptext.SenderSvc" android:exported="false"
+        <service android:name=".services.SenderSvc" android:exported="false"
             android:permission="bmoore.example.encryptext.CALL_SERVICE">
             <intent-filter>
                 <action android:name="com.encryptext.SenderSvc" />
             </intent-filter>
         </service>
 
-        <receiver android:name="bmoore.encryptext.Receiver">
+        <receiver android:name=".receivers.Receiver">
             <intent-filter>
                 <action android:name="android.intent.action.DATA_SMS_RECEIVED" />
                 <data android:host="localhost" android:scheme="sms" android:port="17117" />
             </intent-filter>
         </receiver>
 
-        <receiver android:name="bmoore.encryptext.SendingStatus">
+        <receiver android:name=".receivers.SendingStatus">
             <intent-filter>
                 <action android:name="com.encryptext.PDU_SENT" />
             </intent-filter>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:paddingBottom="5dp"
+                android:paddingTop="5dp" >
+
+    <ImageView
+        android:id="@+id/key_exchange_request_listitem.contact_thumb"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/Placeholder"
+        android:paddingEnd="6dp"
+        android:paddingStart="0dp"/>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/key_exchange_request_listitem.contact_thumb"
+        android:layout_toEndOf="@+id/key_exchange_request_listitem.contact_thumb"
+        android:orientation="vertical" >
+
+        <TextView
+            android:id="@+id/key_exhange_request_listitem.name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingBottom="4dp"
+            android:text="@string/Placeholder"
+            android:textSize="@dimen/convitem_size" />
+
+        <TextView
+            android:id="@+id/key_exchange_request.listitem.status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+
+</RelativeLayout>

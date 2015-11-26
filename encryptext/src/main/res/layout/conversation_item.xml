@@ -2,45 +2,46 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="wrap_content"
-    android:paddingBottom="5.0dip"
-    android:paddingTop="5.0dip" >
+    android:paddingBottom="5.0dp"
+    android:paddingTop="5.0dp" >
     
     <ImageView
-        android:id="@+id/ContactThumb"
+        android:id="@+id/conversation_item.contact_thumb"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:contentDescription="@string/Placeholder"
-        android:paddingRight="6.0dip" />
+        android:paddingStart="0dp"
+        android:paddingEnd="6.0dp" />
 
     <LinearLayout
-        android:id="@+id/linearLayout1"
+        android:id="@+id/conversation_item.linearLayout1"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignTop="@+id/ContactThumb"
-        android:layout_toRightOf="@+id/ContactThumb"
+        android:layout_alignTop="@+id/conversation_item.contact_thumb"
+        android:layout_toEndOf="@+id/conversation_item.contact_thumb"
         android:orientation="vertical" >
 
         <TextView
-            android:id="@+id/From"
+            android:id="@+id/conversation_item.from"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:paddingBottom="4.0dip"
+            android:paddingBottom="4.0dp"
             android:text="@string/Placeholder"
             android:textSize="@dimen/convitem_size" />
 
         <TextView
-            android:id="@+id/Message"
+            android:id="@+id/conversation_item.message"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/Placeholder" />
     </LinearLayout>
 
     <TextView
-        android:id="@+id/Date"
+        android:id="@+id/conversation_item.date"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentRight="true"
-        android:layout_alignTop="@+id/linearLayout1"
+        android:layout_alignParentEnd="true"
+        android:layout_alignTop="@+id/conversation_item.linearLayout1"
         android:text="@string/Placeholder"
         android:textIsSelectable="false" />
 

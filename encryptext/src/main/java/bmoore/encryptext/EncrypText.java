@@ -5,13 +5,24 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.GregorianCalendar;
 import java.util.Date;
+import java.util.Locale;
+
 import android.app.Application;
 import android.content.Context;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.widget.Toast;
+
+import javax.crypto.NoSuchPaddingException;
+
+import bmoore.encryptext.utils.Cryptor;
+import bmoore.encryptext.utils.DBUtils;
+import bmoore.encryptext.utils.Files;
+import bmoore.encryptext.utils.InvalidKeyTypeException;
+import bmoore.encryptext.utils.PRNGFixes;
 
 
 /**
@@ -19,10 +30,10 @@ import android.widget.Toast;
  *
  * Threading: attach finishedtexts arraylist to notification, so app can exit, or otherwise engineer
  * ability for service to exit while only a notification is up. Also re-engineer the closing of the
- * service in Main, so that the service is not indiscriminately killed.
+ * service in HomeActivity, so that the service is not indiscriminately killed.
  *
  * Preferred arch: hold arraylist of finishedtexts for notification, then if nothing else and
- * notification deleted, bump thread for exit check. When Main exits, bump thread as well.
+ * notification deleted, bump thread for exit check. When HomeActivity exits, bump thread as well.
  *
  *
  * Create fixed length error markers for file, so we can tell what kind of error occurred, if
@@ -37,7 +48,7 @@ public class EncrypText extends Application
     private Cryptor cryptor;
     private GregorianCalendar cal;
 	private String phoneNumber;
-
+    private DBUtils dbUtils;
 
     public static final String THREAD_POSITION = "p";
     public static final String THREAD_ITEM = "i";
@@ -70,13 +81,14 @@ public class EncrypText extends Application
         TelephonyManager mgr = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         phoneNumber = formatNumber(mgr.getLine1Number());
 
-        cal = new GregorianCalendar();
-		manager = new Files(this, phoneNumber);
-        cryptor = new Cryptor(manager);
+        cal = new GregorianCalendar(Locale.getDefault());
+		//manager = new Files(this, phoneNumber);
+        dbUtils = new DBUtils(this);
 
         try {
+            cryptor = new Cryptor(dbUtils);
             cryptor.initPublicCrypto();
-        } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException | InvalidAlgorithmParameterException e) {
+        } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidAlgorithmParameterException | InvalidKeyTypeException | InvalidKeySpecException e) {
             Log.e(TAG, "Error initializing public key cryptography", e);
             Toast.makeText(this, "Error initializing public key cryptography", Toast.LENGTH_SHORT).show();
         }
@@ -90,18 +102,20 @@ public class EncrypText extends Application
 		return result;
 	}
 
-    GregorianCalendar getCal()
+    public GregorianCalendar getCal()
     {
         cal.setTime(new Date());
         return cal;
     }
 	
-	Files getFileManager()
+	public Files getFileManager()
 	{
 		return manager;
 	}
 
-    Cryptor getCryptor() { return cryptor; }
+    public Cryptor getCryptor() { return cryptor; }
+
+    public DBUtils getDbUtils() { return dbUtils; }
 
     String getPhoneNumber() { return phoneNumber; }
 

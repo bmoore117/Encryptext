@@ -12,7 +12,8 @@
     <string name="Type_Message">Type Message</string>
     <string name="Send">Send</string>
     <string name="Start_Conversation">startConversationView</string>
-    <string name="Title_Conversation_View">Conversation</string>
+    <string name="title_conversation_view">Conversation</string>
+    <string name="title_key_exchange_requests">Key Exchange Statuses</string>
     <string name="Send_Message">sendMessage</string>
     <string name="contactCaption">Contact image</string>
     <string name="yes">Yes</string>

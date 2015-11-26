@@ -1,7 +1,6 @@
-package bmoore.encryptext;
+package bmoore.encryptext.model;
 
 import android.content.Context;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -40,13 +39,13 @@ public class ConversationAdapter extends ArrayAdapter<ConversationEntry>
 		if(row == null)
 		{
 			LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-			row = inflater.inflate(R.layout.convitem, parent, false);
+			row = inflater.inflate(R.layout.conversation_item, parent, false);
 		}
 
-		TextView From = (TextView) row.findViewById(R.id.From);
-		TextView Message = (TextView) row.findViewById(R.id.Message);
-		ImageView Photo = (ImageView) row.findViewById(R.id.ContactThumb);
-		TextView Date = (TextView) row.findViewById(R.id.Date);
+		TextView From = (TextView) row.findViewById(R.id.conversation_item_from);
+		TextView Message = (TextView) row.findViewById(R.id.conversation_item_message);
+		ImageView Photo = (ImageView) row.findViewById(R.id.conversation_item_contact_thumb);
+		TextView Date = (TextView) row.findViewById(R.id.conversation_item_date);
 
 		From.setText(data.get(pos).getName());
 		Message.setText(data.get(pos).getMessage());
@@ -62,6 +61,10 @@ public class ConversationAdapter extends ArrayAdapter<ConversationEntry>
         //Log.i("Adapter", "Formatting date");
         if(date == null)
 			return null;
+
+
+        if("Sending".equals(date))
+            return date;
 
         if(date.contains("*"))
         {
@@ -120,4 +123,6 @@ public class ConversationAdapter extends ArrayAdapter<ConversationEntry>
 		else
 			return "Dec ";
 	}
+
+    public ArrayList<ConversationEntry> getData() { return data; }
 }
