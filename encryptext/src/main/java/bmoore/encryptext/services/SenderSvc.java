@@ -29,6 +29,7 @@ import bmoore.encryptext.utils.Cryptor;
 import bmoore.encryptext.EncrypText;
 import bmoore.encryptext.utils.DBUtils;
 import bmoore.encryptext.ui.HomeActivity;
+import bmoore.encryptext.utils.DateUtils;
 import bmoore.encryptext.utils.InvalidKeyTypeException;
 
 
@@ -258,7 +259,7 @@ public class SenderSvc extends Service {
         }
     }
 
-    public void sendMessage(ConversationEntry item, int place, Key key)
+    public synchronized void sendMessage(ConversationEntry item, int place, Key key)
     {
         String address = item.getNumber();
 
@@ -352,7 +353,7 @@ public class SenderSvc extends Service {
 
         if(confirmation.getMessageParts() == 0)
         {
-            String time = buildDate();
+            String time = DateUtils.buildDate();
 
             if(!confirmTimes.containsKey(number))
                 confirmTimes.put(number, new TreeMap<Integer, String>());
@@ -385,43 +386,6 @@ public class SenderSvc extends Service {
     public TreeMap<Integer, String> getConfs(String number)
     {
         return confirmTimes.get(number);
-    }
-
-    private String buildDate()
-    {
-        final int MAX_DATE_LENGTH = 19;
-
-        Calendar cal = app.getCal();
-        String time;
-
-        int hour = cal.get(Calendar.HOUR);
-
-        if(hour == 0)
-            time = "12:";
-        else
-            time = hour + ":";
-
-
-        int minute = cal.get(Calendar.MINUTE);
-        if(minute < 10) //apply minute filtering
-            time += "0" + minute;
-        else
-            time += minute;
-
-        if(cal.get(Calendar.AM_PM) == 0)
-            time += " AM";
-        else
-            time += " PM";
-
-        time += "," + cal.get(Calendar.MONTH) + ","
-                + cal.get(Calendar.DAY_OF_MONTH) + "," + cal.get(Calendar.YEAR);
-
-        int padLength = MAX_DATE_LENGTH - time.length();
-
-        for(int i = 0; i < padLength; i++) //pad. Bump that String.format noise
-            time += "*";
-
-        return time;
     }
 
     public IBinder onBind(Intent intent) {

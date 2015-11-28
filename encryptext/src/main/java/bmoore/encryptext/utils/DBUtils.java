@@ -9,6 +9,7 @@ import android.database.sqlite.SQLiteStatement;
 import android.graphics.Bitmap;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import bmoore.encryptext.db.DBManager;

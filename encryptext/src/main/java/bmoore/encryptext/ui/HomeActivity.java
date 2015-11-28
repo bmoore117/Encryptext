@@ -2,6 +2,7 @@ package bmoore.encryptext.ui;
 
 import android.app.ListActivity;
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -43,6 +44,7 @@ public class HomeActivity extends ListActivity
     private static final String TAG = "HomeActivity";
 
     private Menu menu;
+
 
 	/**
 	 * Returns whether the activity is running or paused
@@ -95,15 +97,12 @@ public class HomeActivity extends ListActivity
 
         app = ((EncrypText)getApplication());
         dbUtils = app.getDbUtils();
+
         adapter = new ConversationAdapter(this, R.layout.home_screen,
                 new ArrayList<ConversationEntry>());
 
 
-        adapter.addAll(dbUtils.readPreviews());
-
-        if(adapter.getCount() == 0)
-            adapter.add(new ConversationEntry("No conversations. Talk to someone!",
-                    null, null, null, null));
+        new LoadPreviewsTask().execute();
 
         setListAdapter(adapter);
 
@@ -244,9 +243,8 @@ public class HomeActivity extends ListActivity
 		active = true;
 		if (newPreviews)
 		{
-			List<ConversationEntry> previews = dbUtils.readPreviews();
-			adapter.clear();
-			adapter.addAll(previews);
+            adapter.clear();
+            new LoadPreviewsTask().execute();
 			newPreviews = false;
 		}
 
@@ -311,4 +309,21 @@ public class HomeActivity extends ListActivity
 			}
 		}	
 	}
+
+    private class LoadPreviewsTask extends AsyncTask<Void, Void, List<ConversationEntry>> {
+
+        @Override
+        protected List<ConversationEntry> doInBackground(Void... params) {
+            return dbUtils.readPreviews();
+        }
+
+        @Override
+        protected void onPostExecute(List<ConversationEntry> previews) {
+            adapter.addAll(previews);
+
+            if(adapter.getCount() == 0)
+                adapter.add(new ConversationEntry("No conversations. Talk to someone!",
+                        null, null, null, null));
+        }
+    }
 }

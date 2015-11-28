@@ -46,7 +46,6 @@ public class EncrypText extends Application
 {
 	private Files manager;
     private Cryptor cryptor;
-    private GregorianCalendar cal;
 	private String phoneNumber;
     private DBUtils dbUtils;
 
@@ -82,7 +81,6 @@ public class EncrypText extends Application
         TelephonyManager mgr = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         phoneNumber = formatNumber(mgr.getLine1Number());
 
-        cal = new GregorianCalendar(Locale.getDefault());
 		//manager = new Files(this, phoneNumber);
         dbUtils = new DBUtils(this);
 
@@ -102,12 +100,6 @@ public class EncrypText extends Application
 			result = "+" + result;
 		return result;
 	}
-
-    public GregorianCalendar getCal()
-    {
-        cal.setTime(new Date());
-        return cal;
-    }
 	
 	public Files getFileManager()
 	{

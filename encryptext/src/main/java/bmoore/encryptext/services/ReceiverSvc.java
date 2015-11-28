@@ -19,7 +19,6 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.Timer;
@@ -39,6 +38,7 @@ import bmoore.encryptext.ui.HomeActivity;
 import bmoore.encryptext.utils.ContactUtils;
 import bmoore.encryptext.utils.Cryptor;
 import bmoore.encryptext.utils.DBUtils;
+import bmoore.encryptext.utils.DateUtils;
 import bmoore.encryptext.utils.InvalidKeyTypeException;
 
 public class ReceiverSvc extends Service
@@ -302,7 +302,7 @@ public class ReceiverSvc extends Service
         String name = ContactUtils.getContactName(getContentResolver(), address);
 
         Log.i(TAG, "Building date");
-        String time = buildDate();
+        String time = DateUtils.buildDate();
         Log.i(TAG, "Date of " + time);
 		
 		return new ConversationEntry(message, address, name, time, null);
@@ -388,7 +388,7 @@ public class ReceiverSvc extends Service
                 name = address;
 
             Intent delete = new Intent(this, ReceiverSvc.class);
-            delete.putExtra(EncrypText.DATE, new Date());
+            delete.putExtra(EncrypText.DATE, DateUtils.buildDate());
             delete.putExtra(EncrypText.ADDRESS, address);
             delete.putExtra(EncrypText.NAME, name);
             PendingIntent p3 = PendingIntent.getService(this, 3, delete, PendingIntent.FLAG_UPDATE_CURRENT);
@@ -596,7 +596,7 @@ public class ReceiverSvc extends Service
                 Bundle pdus = b.getBundle(EncrypText.PDUS);
                 String name = b.getString(EncrypText.NAME);
                 String address = b.getString(EncrypText.ADDRESS);
-                Date date = (Date) b.get(EncrypText.DATE);
+                String date = b.getString(EncrypText.DATE);
                 int flags = b.getInt(EncrypText.FLAGS, -1);
 
                 if (pdus != null)
@@ -607,7 +607,7 @@ public class ReceiverSvc extends Service
                 else if(date != null && name != null && address != null)
                 {
                     Log.i(TAG, "Generating key request entry");
-                    dbUtils.generateKeyRequestEntry(address, name, Contact.KeyStatus.NEEDS_REVIEW, date.toString());
+                    dbUtils.generateKeyRequestEntry(address, name, Contact.KeyStatus.NEEDS_REVIEW, date);
                     HomeActivity.setNewKeyRequests();
 
                     if (HomeActivity.isActive())
@@ -672,43 +672,6 @@ public class ReceiverSvc extends Service
     public void removeHeldTexts(String number)
     {
         finishedTexts.remove(number);
-    }
-
-    private String buildDate()
-    {
-        final int MAX_DATE_LENGTH = 19;
-
-        Calendar cal = app.getCal();
-        String time;
-
-        int hour = cal.get(Calendar.HOUR);
-
-        if(hour == 0)
-            time = "12:";
-        else
-            time = hour + ":";
-
-
-        int minute = cal.get(Calendar.MINUTE);
-        if(minute < 10) //apply minute filtering
-            time += "0" + minute;
-        else
-            time += minute;
-
-        if(cal.get(Calendar.AM_PM) == 0)
-            time += " AM";
-        else
-            time += " PM";
-
-        time += "," + cal.get(Calendar.MONTH) + ","
-                + cal.get(Calendar.DAY_OF_MONTH) + "," + cal.get(Calendar.YEAR);
-
-        int padLength = MAX_DATE_LENGTH - time.length();
-
-        for(int i = 0; i < padLength; i++) //pad. Bump that String.format noise
-            time += "*";
-
-        return time;
     }
 
     public class ReceiverBinder extends Binder

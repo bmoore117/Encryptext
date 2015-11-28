@@ -14,6 +14,7 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.provider.ContactsContract.CommonDataKinds;
@@ -66,11 +67,8 @@ public class ConversationActivity extends ListActivity
 	private static String number = "";
 	private Bitmap me;
 	private Bitmap other;
-    private DBUtils dbUtils;
-    private Cryptor cryptor;
     private SenderSvc senderSvc;
     private SecretKey secretKey;
-    private boolean shouldLoaderWait;
     private ArrayList<Contact> suggestions;
     private String query;
 	private ConversationAdapter adapter;
@@ -79,100 +77,108 @@ public class ConversationActivity extends ListActivity
     private EditText messageBox;
     private Context context;
 
-    private final Thread loader = new Thread("Suggestions Loader")
-    {
-        @Override
-        public void run()
+    private DBUtils dbUtils;
+    private Cryptor cryptor;
+    private Thread loader;
+    private volatile boolean shouldLoaderWait;
+
+    public ConversationActivity() {
+
+        loader = new Thread("Suggestions Loader")
         {
-            while(true)
+            @Override
+            public void run()
             {
-                shouldLoaderWait = true;
-                while (shouldLoaderWait)
+                while(true)
                 {
-                    try
+                    shouldLoaderWait = true;
+                    while (shouldLoaderWait)
                     {
-                        synchronized (loader)
+                        try
                         {
-                            loader.wait();
+                            synchronized (loader)
+                            {
+                                loader.wait();
+                            }
+                        }
+                        catch (InterruptedException e)
+                        {
+                            Log.i(TAG, "Suggestions loader woken");
                         }
                     }
-                    catch (InterruptedException e)
+
+                    suggestions = new ArrayList<>();
+
+                    Uri temp = CommonDataKinds.Phone.CONTENT_FILTER_URI;
+
+                    if(temp == null)
                     {
-                        Log.i(TAG, "Suggestions loader woken");
+                        Log.v(TAG, "Could not read CommonDataKinds.Phone.CONTENT_FILTER_URI");
+                        return;
                     }
-                }
 
-                suggestions = new ArrayList<>();
+                    Uri person = Uri.withAppendedPath(temp, query);
 
-                Uri temp = CommonDataKinds.Phone.CONTENT_FILTER_URI;
-
-                if(temp == null)
-                {
-                    Log.v(TAG, "Could not read CommonDataKinds.Phone.CONTENT_FILTER_URI");
-                    return;
-                }
-
-                Uri person = Uri.withAppendedPath(temp, query);
-
-                if(person == null)
-                {
-                    Log.v(TAG, "Failed constructing Uri person with base Uri and contact name/number");
-                    return;
-                }
-
-                String[] projection = {Contacts.DISPLAY_NAME, CommonDataKinds.Phone.NUMBER,
-                        CommonDataKinds.Phone.CONTACT_ID};
-                ContentResolver cr = getContentResolver();
-                Cursor c = cr.query(person, projection, null, null, null);
-
-                if(c == null)
-                {
-                    Log.v(TAG, "Query to contacts database with supplied args failed");
-                    return;
-                }
-
-                int i = c.getColumnIndex(Contacts.DISPLAY_NAME);
-                int j = c.getColumnIndex(CommonDataKinds.Phone.NUMBER);
-                int k = c.getColumnIndex(CommonDataKinds.Phone.CONTACT_ID);
-
-                if (c.moveToFirst())
-                {
-                    do
+                    if(person == null)
                     {
-                        String name = c.getString(i);
-                        String number = c.getString(j);
-                        Uri picPath = Uri.withAppendedPath(Contacts.CONTENT_URI, c.getString(k));
-                        Bitmap thumb = BitmapFactory.decodeStream(
-                                Contacts.openContactPhotoInputStream(getContentResolver(), picPath));
+                        Log.v(TAG, "Failed constructing Uri person with base Uri and contact name/number");
+                        return;
+                    }
 
-                        try {
-                            secretKey = cryptor.loadSecretKey(formatNumber(number));
+                    String[] projection = {Contacts.DISPLAY_NAME, CommonDataKinds.Phone.NUMBER,
+                            CommonDataKinds.Phone.CONTACT_ID};
+                    ContentResolver cr = getContentResolver();
+                    Cursor c = cr.query(person, projection, null, null, null);
 
-                            if (secretKey == null) //might have to re-engineer contact to store secret key
-                                suggestions.add(new Contact(name, number, thumb, HALF));
-                            else
-                                suggestions.add(new Contact(name, number, thumb, FULL));
-                        } catch (InvalidKeyTypeException e) {
-                            Log.e(TAG, "Unable to load secret key", e);
-                            Toast.makeText(ConversationActivity.this, "Unable to load secret key", Toast.LENGTH_SHORT).show();
+                    if(c == null)
+                    {
+                        Log.v(TAG, "Query to contacts database with supplied args failed");
+                        return;
+                    }
+
+                    int i = c.getColumnIndex(Contacts.DISPLAY_NAME);
+                    int j = c.getColumnIndex(CommonDataKinds.Phone.NUMBER);
+                    int k = c.getColumnIndex(CommonDataKinds.Phone.CONTACT_ID);
+
+                    if (c.moveToFirst())
+                    {
+                        do
+                        {
+                            String name = c.getString(i);
+                            String number = c.getString(j);
+                            Uri picPath = Uri.withAppendedPath(Contacts.CONTENT_URI, c.getString(k));
+                            Bitmap thumb = BitmapFactory.decodeStream(
+                                    Contacts.openContactPhotoInputStream(getContentResolver(), picPath));
+
+                            try {
+                                secretKey = cryptor.loadSecretKey(formatNumber(number));
+
+                                if (secretKey == null) //might have to re-engineer contact to store secret key
+                                    suggestions.add(new Contact(name, number, thumb, HALF));
+                                else
+                                    suggestions.add(new Contact(name, number, thumb, FULL));
+                            } catch (InvalidKeyTypeException e) {
+                                Log.e(TAG, "Unable to load secret key", e);
+                                Toast.makeText(ConversationActivity.this, "Unable to load secret key", Toast.LENGTH_SHORT).show();
+                            }
                         }
+                        while (c.moveToNext());
                     }
-                    while (c.moveToNext());
+
+                    c.close();
+
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run()
+                        {
+                            contacts.clear();
+                            contacts.addAll(suggestions);
+                        }
+                    });
                 }
-
-                c.close();
-
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run()
-                    {
-                        contacts.clear();
-                        contacts.addAll(suggestions);
-                    }
-                });
             }
-        }
-    };
+        };
+    }
 
 	/**
 	 * Method provided for the service to poll this activity and find out the conversation it is in
@@ -250,20 +256,6 @@ public class ConversationActivity extends ListActivity
         }
     };
 
-    /*private ServiceConnection receiverConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName className, IBinder service)
-        {
-            receiverSvc = ((ReceiverSvc.ReceiverBinder)service).getService();
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName className)
-        {
-            receiverSvc = null;
-        }
-    };*/
-
 	/**
 	 * Performs the initial setup when creating an instance of this activity. Performs three key tasks. First,
 	 * it initializes a textChangedListener that retrieves contact suggestions based on what the user types, and
@@ -284,10 +276,11 @@ public class ConversationActivity extends ListActivity
 		active = true;
 		created = true;
         conversationChanged = false;
-		
-		EncrypText app = ((EncrypText)getApplication());
-		dbUtils = app.getDbUtils();
+
+        EncrypText app = ((EncrypText) getApplication());
+        dbUtils = app.getDbUtils();
         cryptor = app.getCryptor();
+
 		adapter = new ConversationAdapter(this, R.layout.conversation_item, new ArrayList<ConversationEntry>());
 		//list = (ListView) findViewById(android.R.id.list); //how you reference that pesky bitch
 		to = (AutoCompleteTextView) findViewById(R.id.phone);
@@ -382,16 +375,10 @@ public class ConversationActivity extends ListActivity
 		{
 			number = b.getString(EncrypText.ADDRESS);
 			other = ContactUtils.getBitmap(getContentResolver(), number);
-			adapter.addAll(dbUtils.loadConversation(number, 0));
-			
-			to.setVisibility(View.GONE);
+			new LoadConversationTask().execute(new LoadConversationArgs(number, 0));
+            new LoadSecretKeyTask().execute(number);
 
-            try {
-                secretKey = cryptor.loadSecretKey(number);
-            } catch (InvalidKeyTypeException e) {
-                Log.e(TAG, "Unable to load secret key", e);
-                Toast.makeText(this, "Unable to load secret key", Toast.LENGTH_SHORT).show();
-            }
+			to.setVisibility(View.GONE);
 		}
 		
 		setListAdapter(adapter);
@@ -498,10 +485,9 @@ public class ConversationActivity extends ListActivity
 		else if (address != null) //for jumping to new conv via notification
 		{
 			adapter.clear();
-			List<ConversationEntry> conv = dbUtils.loadConversation(number, 0);
-			adapter.addAll(conv);
+            number = address;
+            new LoadConversationTask().execute(new LoadConversationArgs(number, 0));
 			AutoCompleteTextView To = (AutoCompleteTextView)findViewById(R.id.phone);
-			number = address;
 			To.setVisibility(View.GONE);
             conversationChanged = false;
             created = true;
@@ -580,10 +566,7 @@ public class ConversationActivity extends ListActivity
 		
 		if (newData)
 		{
-            //int shift = findShift();
-			List<ConversationEntry> newMessages = dbUtils.loadConversation(number, adapter.getData().get(adapter.getData().size() - 1).getMessageId());
-
-			this.adapter.addAll(newMessages);
+            new LoadConversationTask().execute(new LoadConversationArgs(number, adapter.getData().get(adapter.getData().size() - 1).getMessageId()));
 
             ((NotificationManager)getSystemService(
                     Context.NOTIFICATION_SERVICE)).cancel(number.hashCode());
@@ -596,7 +579,7 @@ public class ConversationActivity extends ListActivity
 	/**
 	 * Method called by the GUI when the send message button is pressed. Hides the contact selection
 	 * box, as a contact has been selected, displays the message to send, and calls the sendText method
-	 * to handle the packetization. Writes the sent message to file.
+	 * to handle the packetization. Writes the sent message to the database.
 	 * 
 	 * Note: do something to show message sent: confirmation check?
 	 * 
@@ -619,9 +602,8 @@ public class ConversationActivity extends ListActivity
 
             ConversationEntry item = new ConversationEntry(text, number, "Me", "Sending", me);
 
-            senderSvc.sendMessage(item, adapter.getCount(), secretKey);
+            new SendMessageTask().execute(new SendMessageArgs(item, adapter.getCount(), secretKey));
 
-            adapter.add(item);
             conversationChanged = true;
 		}
 	}
@@ -636,4 +618,102 @@ public class ConversationActivity extends ListActivity
 	{
 		to.setText(name + " ");
 	}
+
+
+    private class LoadConversationArgs {
+        private final String number;
+        private final long messageId;
+
+        public LoadConversationArgs(String number, long messageId)
+        {
+            this.number = number;
+            this.messageId = messageId;
+        }
+
+        public long getMessageId()
+        {
+            return messageId;
+        }
+
+        public String getNumber()
+        {
+            return number;
+        }
+    }
+
+
+    private class LoadConversationTask extends AsyncTask<LoadConversationArgs, Void, List<ConversationEntry>> {
+
+        @Override
+        protected List<ConversationEntry> doInBackground(LoadConversationArgs... params) {
+            return dbUtils.loadConversation(params[0].getNumber(), params[0].getMessageId());
+        }
+
+        @Override
+        protected void onPostExecute(List<ConversationEntry> messages) {
+            adapter.addAll(messages);
+        }
+    }
+
+    private class LoadSecretKeyTask extends AsyncTask<String, Void, SecretKey> {
+
+        @Override
+        protected SecretKey doInBackground(String... params) {
+
+            SecretKey key = null;
+            try {
+                key = cryptor.loadSecretKey(params[0]);
+            } catch (InvalidKeyTypeException e) {
+                Log.e(TAG, "Unable to load secret key", e);
+                Toast.makeText(ConversationActivity.this, "Unable to load secret key", Toast.LENGTH_SHORT).show();
+            }
+
+            return key;
+        }
+
+        @Override
+        protected void onPostExecute(SecretKey key) {
+            secretKey = key;
+        }
+    }
+
+    private class SendMessageArgs {
+        public ConversationEntry getItem() {
+            return item;
+        }
+
+        public int getMessageNumber() {
+            return messageNumber;
+        }
+
+        public SecretKey getKey() {
+            return key;
+        }
+
+        private final ConversationEntry item;
+        private final int messageNumber;
+        private final SecretKey key;
+
+        public SendMessageArgs(ConversationEntry item, int messageNumber, SecretKey key) {
+            this.item = item;
+            this.messageNumber = messageNumber;
+            this.key = key;
+        }
+    }
+
+    private class SendMessageTask extends AsyncTask<SendMessageArgs, Void, ConversationEntry> {
+
+        @Override
+        protected ConversationEntry doInBackground(SendMessageArgs... params) {
+
+            senderSvc.sendMessage(params[0].getItem(), params[0].getMessageNumber(), params[0].getKey());
+
+            return params[0].getItem();
+        }
+
+        @Override
+        protected void onPostExecute(ConversationEntry item) {
+            adapter.add(item);
+        }
+    }
 }

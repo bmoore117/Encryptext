@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
@@ -18,6 +19,7 @@ import android.widget.Toast;
 import java.security.InvalidKeyException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
+import java.util.List;
 
 import bmoore.encryptext.EncrypText;
 import bmoore.encryptext.R;
@@ -59,13 +61,13 @@ public class KeyRequestsActivity extends ListActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.key_exhange_requests);
 
-        app = ((EncrypText)getApplication());
+        app = ((EncrypText) getApplication());
         dbUtils = app.getDbUtils();
 
-         adapter = new KeyRequestAdapter(this, R.layout.key_exchange_request_listitem,
+        adapter = new KeyRequestAdapter(this, R.layout.key_exchange_request_listitem,
                 new ArrayList<KeyRequest>());
 
-        adapter.addAll(dbUtils.loadKeyRequests());
+        new LoadKeyRequestsTask().execute();
 
         if(adapter.getCount() == 0)
             adapter.add(new KeyRequest("No keys exchanged. Start a conversation from the home screen", null, null, null));
@@ -132,4 +134,16 @@ public class KeyRequestsActivity extends ListActivity {
         }
     }
 
+    private class LoadKeyRequestsTask extends AsyncTask<Void, Void, List<KeyRequest>> {
+
+        @Override
+        protected List<KeyRequest> doInBackground(Void... params) {
+            return dbUtils.loadKeyRequests();
+        }
+
+        @Override
+        protected void onPostExecute(List<KeyRequest> requests) {
+            adapter.addAll(requests);
+        }
+    }
 }
