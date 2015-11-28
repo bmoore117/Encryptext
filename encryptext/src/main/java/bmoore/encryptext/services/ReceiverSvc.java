@@ -12,7 +12,6 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.telephony.SmsMessage;
 import android.util.Log;
-import android.widget.RemoteViews;
 import android.widget.Toast;
 
 import java.security.InvalidAlgorithmParameterException;
@@ -349,7 +348,7 @@ public class ReceiverSvc extends Service
             Log.i(TAG, "Generating secret key");
             SecretKey secretKey;
             try {
-                secretKey = cryptor.finalize(address);
+                secretKey = cryptor.createAndStoreSecretKey(address);
             }
             catch (InvalidKeyException | InvalidKeyTypeException e) {
                 Log.e(TAG, "Error generating secret key", e);
@@ -369,25 +368,21 @@ public class ReceiverSvc extends Service
             builder.setContentTitle("Key exchange complete");
             builder.setContentText("You are ready to begin sending messages to " + name);
             builder.setAutoCancel(true);
-            builder.setLights(-16711936, 1000, 3000);
         } else {
-            RemoteViews contentView = new RemoteViews(getPackageName(), R.layout.key_exchange_notification);
-
-            contentView.setImageViewBitmap(R.id.keyNotificationPicture, ContactUtils.getBitmap(getContentResolver(), address));
-            contentView.setTextViewText(R.id.keyNotificationMessage, name + " is requesting to swap public keys with you. Accept and reply with your key?");
 
             Intent yes = new Intent(this, SenderSvc.class);
             yes.putExtra(EncrypText.KEY, cryptor.getMyPublicKey());
             yes.putExtra(EncrypText.ADDRESS, address); //comment slash change for local phone testing
             yes.putExtra(EncrypText.FLAGS, EncrypText.FLAG_GENERATE_SECRET_KEY);
-            PendingIntent p1 = PendingIntent.getService(this, 0, yes, PendingIntent.FLAG_UPDATE_CURRENT);
-            contentView.setOnClickPendingIntent(R.id.yesButton, p1);
+            PendingIntent p1 = PendingIntent.getService(this, 1, yes, PendingIntent.FLAG_UPDATE_CURRENT);
+            builder.addAction(R.drawable.ic_done_black_24dp, "Yes", p1);
+
 
             Intent no = new Intent(this, ReceiverSvc.class);
             no.putExtra(EncrypText.ADDRESS, address);
             no.putExtra(EncrypText.FLAGS, EncrypText.FLAG_REMOVE_PUBLIC_KEY);
-            PendingIntent p2 = PendingIntent.getService(this, 0, no, PendingIntent.FLAG_UPDATE_CURRENT);
-            contentView.setOnClickPendingIntent(R.id.noButton, p2);
+            PendingIntent p2 = PendingIntent.getService(this, 2, no, PendingIntent.FLAG_UPDATE_CURRENT);
+            builder.addAction(R.drawable.ic_clear_black_24dp, "No", p2);
 
             if(name == null || "".equals(name))
                 name = address;
@@ -396,15 +391,18 @@ public class ReceiverSvc extends Service
             delete.putExtra(EncrypText.DATE, new Date());
             delete.putExtra(EncrypText.ADDRESS, address);
             delete.putExtra(EncrypText.NAME, name);
-            PendingIntent p3 = PendingIntent.getService(this, 0, delete, PendingIntent.FLAG_UPDATE_CURRENT);
+            PendingIntent p3 = PendingIntent.getService(this, 3, delete, PendingIntent.FLAG_UPDATE_CURRENT);
 
             builder.setDeleteIntent(p3);
-            builder.setContent(contentView);
+            builder.setContentTitle("Request from " + name);
+            builder.setContentText(name + " is requesting to swap public keys with you. Accept and reply with your key?");
+            builder.setLargeIcon(ContactUtils.getBitmap(getContentResolver(), address));
             builder.setAutoCancel(false);
         }
 
         builder.setDefaults(Notification.DEFAULT_VIBRATE | Notification.DEFAULT_SOUND);
         builder.setSmallIcon(R.mipmap.ic_stat_notification);
+        builder.setLights(-16711936, 1000, 3000);
 
         ((NotificationManager) getSystemService(ReceiverSvc.NOTIFICATION_SERVICE)
         ).notify(address.hashCode(), builder.build());
@@ -610,6 +608,15 @@ public class ReceiverSvc extends Service
                 {
                     Log.i(TAG, "Generating key request entry");
                     dbUtils.generateKeyRequestEntry(address, name, Contact.KeyStatus.NEEDS_REVIEW, date.toString());
+                    HomeActivity.setNewKeyRequests();
+
+                    if (HomeActivity.isActive())
+                    {
+                        Intent update = new Intent(this, HomeActivity.class);
+                        update.putExtra(EncrypText.FLAGS, EncrypText.FLAG_UPDATE_KEY_REQUESTS_ICON);
+                        update.setFlags(872415232);
+                        startActivity(update);
+                    }
                 }
                 else if(name != null && address != null)
                 {
@@ -620,6 +627,10 @@ public class ReceiverSvc extends Service
                 {
                     Log.i(TAG, "Removing held public key");
                     try {
+                        //cancel notification - action doesn't automatically do so
+                        NotificationManager manager = (NotificationManager) getSystemService(ReceiverSvc.NOTIFICATION_SERVICE);
+                        manager.cancel(address.hashCode());
+
                         cryptor.removePublicKey(address);
                     } catch (InvalidKeyTypeException e) {
                         Log.e(TAG, "Error removing public key", e);

@@ -64,6 +64,7 @@ public class EncrypText extends Application
     public static final String DATE = "d";
     public static final int FLAG_REMOVE_PUBLIC_KEY = 117;
     public static final int FLAG_GENERATE_SECRET_KEY = 1138;
+    public static final int FLAG_UPDATE_KEY_REQUESTS_ICON = 45;
 
     public static final int PUBLIC_KEY_PDU = 1;
     public static final int AES_ENCRYPTED_PDU = 2;

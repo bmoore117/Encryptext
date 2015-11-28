@@ -129,6 +129,16 @@ public class DBUtils {
         return db.insert(Schema.key_exchange_statuses.class.getSimpleName(), "null", values);
     }
 
+    public void deleteKeyRequestEntry(String address)
+    {
+        SQLiteDatabase db = manager.getWritableDatabase();
+
+        String where = Schema.key_exchange_statuses.phone_number + " = ?";
+        String[] whereArgs = new String[] { address };
+
+        db.delete(Schema.key_exchange_statuses.class.getSimpleName(), where, whereArgs);
+    }
+
     public List<KeyRequest> loadKeyRequests()
     {
         SQLiteDatabase db = manager.getReadableDatabase();
@@ -146,13 +156,22 @@ public class DBUtils {
                 String date = statuses.getString(statuses.getColumnIndex(Schema.key_exchange_statuses.status_date));
                 Bitmap other = ContactUtils.getBitmap(contentResolver, number);
 
-                results.add(new KeyRequest(name, status, date, other));
+                results.add(new KeyRequest(name, number, status, date, other));
 
             } while (statuses.moveToNext());
         }
         statuses.close();
 
         return results;
+    }
+
+    public long getKeyRequestsCount()
+    {
+        SQLiteDatabase db = manager.getReadableDatabase();
+
+        SQLiteStatement statement = db.compileStatement("select count(*) from " + Schema.key_exchange_statuses.class.getSimpleName());
+
+        return statement.simpleQueryForLong();
     }
 
     public byte[] loadKeyBytes(String address, Cryptor.KeyTypes type) throws InvalidKeyTypeException

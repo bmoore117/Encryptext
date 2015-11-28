@@ -1,5 +1,6 @@
 package bmoore.encryptext.services;
 
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
@@ -10,13 +11,9 @@ import android.telephony.SmsManager;
 import android.util.Log;
 import android.widget.Toast;
 
-import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
 import java.util.Calendar;
 import java.util.LinkedList;
 import java.util.TreeMap;
@@ -132,8 +129,9 @@ public class SenderSvc extends Service {
         Bundle b = new Bundle();
         b.putString(EncrypText.ADDRESS, intent.getStringExtra(EncrypText.ADDRESS));
         b.putInt(EncrypText.THREAD_POSITION, intent.getIntExtra(EncrypText.THREAD_POSITION, -1));
-        b.putByteArray(EncrypText.KEY, intent.getByteArrayExtra(EncrypText.KEY));
+        b.putSerializable(EncrypText.KEY, intent.getSerializableExtra(EncrypText.KEY));
         b.putBoolean(EncrypText.QUIT_FLAG, intent.getBooleanExtra(EncrypText.QUIT_FLAG, false));
+        b.putInt(EncrypText.FLAGS, intent.getIntExtra(EncrypText.FLAGS, -1));
 
         jobs.add(b);
 
@@ -158,24 +156,22 @@ public class SenderSvc extends Service {
 
             if (b != null)
             {
-                ConversationEntry item = b.getParcelable(EncrypText.THREAD_ITEM);
                 String address = b.getString(EncrypText.ADDRESS);
                 int pos = b.getInt(EncrypText.THREAD_POSITION, -1);
                 Key key = (Key) b.getSerializable(EncrypText.KEY);
                 boolean shouldQuit = b.getBoolean(EncrypText.QUIT_FLAG, false);
+                int flags = b.getInt(EncrypText.FLAGS, -1);
 
-                if(item != null)
-                {
-                    Log.i(TAG, "Sending message");
-                    sendMessage(item, pos, key);
-                }
-                else if(key != null && address != null)
+                if(key != null && address != null)
                 {
                     Log.i(TAG, "Sending public key");
                     sendKey(key, address);
 
-                    int flags = b.getInt(EncrypText.FLAGS, -1);
                     if(flags == EncrypText.FLAG_GENERATE_SECRET_KEY) {
+                        //cancel notification - action doesn't automatically do so
+                        NotificationManager manager = (NotificationManager) getSystemService(ReceiverSvc.NOTIFICATION_SERVICE);
+                        manager.cancel(address.hashCode());
+
                         generateSecretKey(address);
                     }
                 }
@@ -205,7 +201,7 @@ public class SenderSvc extends Service {
         Log.i(TAG, "Generating secret key");
         SecretKey secretKey;
         try {
-            secretKey = cryptor.finalize(address);
+            secretKey = cryptor.createAndStoreSecretKey(address);
         }
         catch (InvalidKeyException | InvalidKeyTypeException e) {
             Log.e(TAG, "Error generating secret key", e);
@@ -223,7 +219,7 @@ public class SenderSvc extends Service {
         }
     }
 
-    private void sendKey(Key key, String address)
+    public void sendKey(Key key, String address)
     {
         byte[] keyBytes = key.getEncoded();
         double pdus = keyBytes.length / (double) (MAX_DATA_BYTES - HEADER_SIZE); //effective data #
@@ -262,7 +258,7 @@ public class SenderSvc extends Service {
         }
     }
 
-    private void sendMessage(ConversationEntry item, int place, Key key)
+    public void sendMessage(ConversationEntry item, int place, Key key)
     {
         String address = item.getNumber();
 

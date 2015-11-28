@@ -73,7 +73,7 @@ public class Cryptor
         sha256 = MessageDigest.getInstance("SHA-256");
     }
 
-    public SecretKey finalize(String address) throws InvalidKeyTypeException, InvalidKeyException
+    public SecretKey createAndStoreSecretKey(String address) throws InvalidKeyTypeException, InvalidKeyException
     {
         PublicKey k = inNegotiation.get(address);
         inNegotiation.remove(address);

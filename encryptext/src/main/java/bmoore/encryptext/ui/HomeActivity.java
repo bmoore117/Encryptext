@@ -9,17 +9,17 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import bmoore.encryptext.EncrypText;
+import bmoore.encryptext.R;
 import bmoore.encryptext.model.ConversationAdapter;
 import bmoore.encryptext.model.ConversationEntry;
-import bmoore.encryptext.utils.DBUtils;
-import bmoore.encryptext.utils.Files;
-import bmoore.encryptext.R;
 import bmoore.encryptext.services.ReceiverSvc;
 import bmoore.encryptext.services.SenderSvc;
+import bmoore.encryptext.utils.DBUtils;
 
 
 /**
@@ -33,11 +33,16 @@ public class HomeActivity extends ListActivity
 {
 	private static boolean active = false;
     private static boolean created = false;
-	private static boolean newData = false;
+	private static boolean newPreviews = false;
+
+    private static boolean newKeyRequests = false;
+
 	private EncrypText app;
 	private ConversationAdapter adapter;
 	private DBUtils dbUtils;
     private static final String TAG = "HomeActivity";
+
+    private Menu menu;
 
 	/**
 	 * Returns whether the activity is running or paused
@@ -62,10 +67,12 @@ public class HomeActivity extends ListActivity
 	/**
 	 * Method for app service to inform the activity there is new data to read from file
 	 */
-	public static void setNewData()
+	public static void setNewPreviews()
 	{
-		newData = true;
+		newPreviews = true;
 	}
+
+    public static void setNewKeyRequests() { newKeyRequests = true; }
 
 	/**
 	 * Method invoked by android when the app is first started - this is the root activity for the app.
@@ -116,8 +123,8 @@ public class HomeActivity extends ListActivity
         });
 
 
-        if (newData)
-            newData = false;
+        if (newPreviews)
+            newPreviews = false;
 	}
 
 	/**
@@ -128,6 +135,17 @@ public class HomeActivity extends ListActivity
 	public boolean onCreateOptionsMenu(Menu menu)
 	{
 		getMenuInflater().inflate(R.menu.home_menu_options, menu);
+
+        this.menu = menu;
+
+        if(dbUtils.getKeyRequestsCount() > 0)
+        {
+            menu.getItem(0).setIcon(R.drawable.ic_person_black_24dp);
+            newKeyRequests = false;
+        } else {
+            menu.getItem(0).setIcon(R.drawable.ic_person_outline_black_24dp);
+        }
+
 		return true;
 	}
 
@@ -187,14 +205,24 @@ public class HomeActivity extends ListActivity
 	public void onNewIntent(Intent intent)
 	{
 		active = true;
-		ConversationEntry item = intent.getExtras().getParcelable(EncrypText.THREAD_ITEM);
-		if (item != null)
-		{
-			updateList(item);
-			Intent in = new Intent(this, ReceiverSvc.class);
-			in.putExtra(EncrypText.ADDRESS, item.getNumber());
-			startService(in);
-		}
+
+        int flags = intent.getIntExtra(EncrypText.FLAGS, -1);
+
+        if(flags == EncrypText.FLAG_UPDATE_KEY_REQUESTS_ICON)
+        {
+            menu.getItem(0).setIcon(R.drawable.ic_person_black_24dp);
+            newKeyRequests = false;
+        }
+        else {
+
+            ConversationEntry item = intent.getExtras().getParcelable(EncrypText.THREAD_ITEM);
+            if (item != null) {
+                updateList(item);
+                Intent in = new Intent(this, ReceiverSvc.class);
+                in.putExtra(EncrypText.ADDRESS, item.getNumber());
+                startService(in);
+            }
+        }
 	}
 
 	/**
@@ -214,13 +242,22 @@ public class HomeActivity extends ListActivity
 	{
 		super.onResume();
 		active = true;
-		if (newData)
+		if (newPreviews)
 		{
 			List<ConversationEntry> previews = dbUtils.readPreviews();
 			adapter.clear();
 			adapter.addAll(previews);
-			newData = false;
+			newPreviews = false;
 		}
+
+        if(newKeyRequests)
+        {
+            menu.getItem(0).setIcon(R.drawable.ic_person_black_24dp);
+            newKeyRequests = false;
+        }
+
+        if(menu != null && dbUtils.getKeyRequestsCount() == 0)
+            menu.getItem(0).setIcon(R.drawable.ic_person_outline_black_24dp);
 	}
 
 	/**

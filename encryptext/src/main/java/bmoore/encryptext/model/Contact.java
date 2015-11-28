@@ -13,7 +13,6 @@ public class Contact
     {
         REQUEST_SENT,
         NEEDS_REVIEW,
-        KEYS_EXCAHNGED
     }
 
     public Contact()

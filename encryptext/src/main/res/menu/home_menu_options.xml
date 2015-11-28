@@ -1,7 +1,7 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/action_view_requests"
-        android:icon="@drawable/ic_person_add_black_24dp"
+        android:icon="@drawable/ic_person_outline_black_24dp"
         android:title="@string/view_key_requests"
         android:showAsAction="ifRoom"/>
 

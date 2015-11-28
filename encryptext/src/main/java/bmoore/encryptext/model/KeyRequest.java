@@ -21,20 +21,20 @@ public class KeyRequest implements Parcelable {
     };
 
     private String name;
+    private String number;
     private String status;
     private String date;
     private Bitmap contactThumb;
 
-    public KeyRequest()
-    {
-        this.name = "";
-        this.status = "";
-        this.contactThumb = null;
-    }
-
     public KeyRequest(String name, String status, String date, Bitmap contactThumb)
     {
+        this(name, null, status, date, contactThumb);
+    }
+
+    public KeyRequest(String name, String number, String status, String date, Bitmap contactThumb)
+    {
         this.name = name;
+        this.number = number;
         this.status = status;
         this.date = date;
         this.contactThumb = contactThumb;
@@ -43,6 +43,7 @@ public class KeyRequest implements Parcelable {
     public KeyRequest(Parcel p)
     {
         this.name = p.readString();
+        this.number = p.readString();
         this.status = p.readString();
         this.date = p.readString();
         this.contactThumb = p.readParcelable(Bitmap.class.getClassLoader());
@@ -80,10 +81,19 @@ public class KeyRequest implements Parcelable {
         this.date = date;
     }
 
+    public String getNumber() {
+        return number;
+    }
+
+    public void setNumber(String number) {
+        this.number = number;
+    }
+
 
     public void writeToParcel(Parcel p, int paramInt)
     {
         p.writeString(name);
+        p.writeString(number);
         p.writeString(status);
         p.writeString(date);
         p.writeParcelable(contactThumb, 0);

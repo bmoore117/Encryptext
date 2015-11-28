@@ -62,9 +62,7 @@ public class ConversationActivity extends ListActivity
 	private static boolean created = false;
 	private static boolean newData = false;
     private static boolean newConfs = false;
-    private long lastReadPosition;
     private boolean conversationChanged;
-	private String name = "";
 	private static String number = "";
 	private Bitmap me;
 	private Bitmap other;
@@ -329,8 +327,8 @@ public class ConversationActivity extends ListActivity
                             @Override
                             public void onClick(DialogInterface dialogInterface, int buttonClicked) {
                                 getSharedPreferences(EncrypText.class.getSimpleName(), MODE_PRIVATE).edit()
-                                        .putBoolean("firstTimeExchange", false)
-                                        .putString(number, "inNegotiation").apply();
+                                        .putBoolean("firstTimeExchange", false).apply();
+                                        //.putString(number, "inNegotiation").apply();
                                 startKeyExchange();
                             }
                         });
@@ -386,7 +384,6 @@ public class ConversationActivity extends ListActivity
 			other = ContactUtils.getBitmap(getContentResolver(), number);
 			adapter.addAll(dbUtils.loadConversation(number, 0));
 			
-			name = b.getString(EncrypText.NAME);
 			to.setVisibility(View.GONE);
 
             try {
@@ -405,11 +402,7 @@ public class ConversationActivity extends ListActivity
 
     private void startKeyExchange()
     {
-        Bundle b = new Bundle();
-        b.putSerializable(EncrypText.KEY, cryptor.getMyPublicKey());
-        b.putString(EncrypText.ADDRESS, number);
-        senderSvc.addJob(b);
-
+        senderSvc.sendKey(cryptor.getMyPublicKey(), number);
         finish();
     }
 
@@ -480,7 +473,6 @@ public class ConversationActivity extends ListActivity
 		ArrayList<ConversationEntry> messages = b.getParcelableArrayList(EncrypText.MULTIPLE_THREAD_ITEMS);
 		String time = b.getString(EncrypText.TIME);
 		String address = b.getString(EncrypText.ADDRESS);
-        String name = b.getString(EncrypText.NAME);
         SecretKey key = (SecretKey) b.getSerializable(EncrypText.KEY);
 
         if(key != null)
@@ -510,7 +502,6 @@ public class ConversationActivity extends ListActivity
 			adapter.addAll(conv);
 			AutoCompleteTextView To = (AutoCompleteTextView)findViewById(R.id.phone);
 			number = address;
-            this.name = name;
 			To.setVisibility(View.GONE);
             conversationChanged = false;
             created = true;
@@ -550,7 +541,7 @@ public class ConversationActivity extends ListActivity
 			/*ConversationEntry item = adapter.getItem(adapter.getCount() - 1);
 			manager.writePreview(new ConversationEntry(item.getMessage(), number, name,
                     item.getDate(), null), this);*/
-			HomeActivity.setNewData();
+			HomeActivity.setNewPreviews();
             conversationChanged = false;
 		}
 		super.onPause();
@@ -628,12 +619,7 @@ public class ConversationActivity extends ListActivity
 
             ConversationEntry item = new ConversationEntry(text, number, "Me", "Sending", me);
 
-            Bundle b = new Bundle();
-            b.putParcelable(EncrypText.THREAD_ITEM, item);
-            b.putInt(EncrypText.THREAD_POSITION, adapter.getCount());
-            b.putSerializable(EncrypText.KEY, secretKey);
-
-            senderSvc.addJob(b);
+            senderSvc.sendMessage(item, adapter.getCount(), secretKey);
 
             adapter.add(item);
             conversationChanged = true;
@@ -649,6 +635,5 @@ public class ConversationActivity extends ListActivity
 	public void updateTo(String name)
 	{
 		to.setText(name + " ");
-		this.name = name;
 	}
 }

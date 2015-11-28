@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.List;
 import java.util.Locale;
 
 import bmoore.encryptext.R;
@@ -59,6 +60,11 @@ public class KeyRequestAdapter extends ArrayAdapter<KeyRequest> {
         contactThumb.setImageBitmap(data.get(pos).getContactThumb());
 
         return row;
+    }
+
+    public List<KeyRequest> getData()
+    {
+        return data;
     }
 
     private String formatDate(String date)
