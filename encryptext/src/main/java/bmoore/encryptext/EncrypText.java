@@ -78,8 +78,8 @@ public class EncrypText extends Application
 
 		PRNGFixes.apply();
 
-        TelephonyManager mgr = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-        phoneNumber = formatNumber(mgr.getLine1Number());
+        //TelephonyManager mgr = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+        //phoneNumber = formatNumber(mgr.getLine1Number());
 
 		//manager = new Files(this, phoneNumber);
         dbUtils = new DBUtils(this);

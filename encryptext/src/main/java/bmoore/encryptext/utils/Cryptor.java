@@ -134,6 +134,16 @@ public class Cryptor
         return true;
     }
 
+    public SecretKey createSecretKey()
+    {
+        byte[] orig = new byte[] {2, 24, 25, 24, 15, 78, 44, 34, 99, 10};
+
+        byte[] newSecret = sha256.digest(orig);
+        SecretKey finalKey = new SecretKeySpec(newSecret, "AES");
+
+        return finalKey;
+    }
+
     PrivateKey loadPrivateKey(String address) throws InvalidKeyTypeException, NoSuchAlgorithmException, InvalidKeySpecException
     {
         byte[] keyBytes = dbUtils.loadKeyBytes(address, KeyTypes.PRIVATE);

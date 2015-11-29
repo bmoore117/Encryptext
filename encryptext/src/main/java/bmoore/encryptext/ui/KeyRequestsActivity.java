@@ -10,6 +10,9 @@ import android.content.ServiceConnection;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.support.v7.app.ActionBar;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
@@ -17,7 +20,6 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import java.security.InvalidKeyException;
-import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,7 +33,7 @@ import bmoore.encryptext.utils.DBUtils;
 import bmoore.encryptext.utils.InvalidKeyTypeException;
 
 
-public class KeyRequestsActivity extends ListActivity {
+public class KeyRequestsActivity extends AppCompatActivity {
 
     private DBUtils dbUtils;
     private EncrypText app;
@@ -61,15 +63,21 @@ public class KeyRequestsActivity extends ListActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.key_exhange_requests);
 
+        Toolbar myToolbar = (Toolbar) findViewById(R.id.key_exchange_requests_toolbar);
+        setSupportActionBar(myToolbar);
+        ActionBar bar = getSupportActionBar();
+        bar.setDisplayHomeAsUpEnabled(true);
+
         app = ((EncrypText) getApplication());
         dbUtils = app.getDbUtils();
 
         adapter = new KeyRequestAdapter(this, R.layout.key_exchange_request_listitem,
                 new ArrayList<KeyRequest>());
 
-        new LoadKeyRequestsTask().execute();
+        ListView list = (ListView) findViewById(R.id.key_exchange_requests_list);
+        list.setAdapter(adapter);
 
-        ListView list = (ListView) findViewById(android.R.id.list); //how you reference that pesky bitch
+        new LoadKeyRequestsTask().execute();
 
         list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -111,8 +119,6 @@ public class KeyRequestsActivity extends ListActivity {
                 dialog.show();
             }
         });
-
-        setListAdapter(adapter);
     }
 
     @Override

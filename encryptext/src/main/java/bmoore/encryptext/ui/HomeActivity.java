@@ -4,6 +4,9 @@ import android.app.ListActivity;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v7.app.ActionBar;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -30,7 +33,7 @@ import bmoore.encryptext.utils.DBUtils;
  * @author Benjamin Moore
  *
  */
-public class HomeActivity extends ListActivity
+public class HomeActivity extends AppCompatActivity
 {
 	private static boolean active = false;
     private static boolean created = false;
@@ -92,6 +95,11 @@ public class HomeActivity extends ListActivity
 		super.onCreate(savedInstanceState);
         setContentView(R.layout.home_screen);
 
+        Toolbar myToolbar = (Toolbar) findViewById(R.id.home_screen_toolbar);
+        setSupportActionBar(myToolbar);
+        ActionBar bar = getSupportActionBar();
+        bar.setIcon(R.mipmap.ic_stat_notification);
+
         active = true;
         created = true;
 
@@ -104,9 +112,9 @@ public class HomeActivity extends ListActivity
 
         new LoadPreviewsTask().execute();
 
-        setListAdapter(adapter);
+        ListView list = (ListView) findViewById(R.id.home_screen_list);
 
-        ListView list = (ListView) findViewById(android.R.id.list); //how you reference that pesky bitch
+        list.setAdapter(adapter);
 
         list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override

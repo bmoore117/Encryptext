@@ -1,7 +1,7 @@
 package bmoore.encryptext.ui;
 
+import android.Manifest;
 import android.app.AlertDialog;
-import android.app.ListActivity;
 import android.app.NotificationManager;
 import android.content.ComponentName;
 import android.content.ContentResolver;
@@ -10,6 +10,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -19,6 +20,11 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.provider.ContactsContract.CommonDataKinds;
 import android.provider.ContactsContract.Contacts;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.support.v7.app.ActionBar;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -26,6 +32,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
+import android.widget.ListView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
@@ -34,16 +41,17 @@ import java.util.TreeMap;
 
 import javax.crypto.SecretKey;
 
+import bmoore.encryptext.EncrypText;
+
+import bmoore.encryptext.R;
 import bmoore.encryptext.model.Contact;
 import bmoore.encryptext.model.ContactAdapter;
 import bmoore.encryptext.model.ConversationAdapter;
 import bmoore.encryptext.model.ConversationEntry;
+import bmoore.encryptext.services.SenderSvc;
 import bmoore.encryptext.utils.ContactUtils;
 import bmoore.encryptext.utils.Cryptor;
-import bmoore.encryptext.EncrypText;
 import bmoore.encryptext.utils.DBUtils;
-import bmoore.encryptext.R;
-import bmoore.encryptext.services.SenderSvc;
 import bmoore.encryptext.utils.InvalidKeyTypeException;
 
 /**
@@ -54,17 +62,23 @@ import bmoore.encryptext.utils.InvalidKeyTypeException;
  * @author Benjamin Moore
  *
  */
-public class ConversationActivity extends ListActivity
+public class ConversationActivity extends AppCompatActivity
 {
     private static final String TAG = "ConversationActivity";
     private static final int HALF = 50;
     private static final int FULL = 100;
+
+    private static final int READ_CONTACTS_REQUEST_CODE = 1;
+    private static final int SEND_SMS_REQUEST_CODE = 2;
+
+
 	private static boolean active = false;
 	private static boolean created = false;
 	private static boolean newData = false;
     private static boolean newConfs = false;
     private boolean conversationChanged;
 	private static String number = "";
+    private String name;
 	private Bitmap me;
 	private Bitmap other;
     private SenderSvc senderSvc;
@@ -75,7 +89,6 @@ public class ConversationActivity extends ListActivity
 	private ContactAdapter contacts;
 	private AutoCompleteTextView to;
     private EditText messageBox;
-    private Context context;
 
     private DBUtils dbUtils;
     private Cryptor cryptor;
@@ -271,7 +284,24 @@ public class ConversationActivity extends ListActivity
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.conversation);
 
-        //Toast.makeText(this, "Creating", Toast.LENGTH_SHORT).show();
+        Toolbar myToolbar = (Toolbar) findViewById(R.id.conversation_toolbar);
+        setSupportActionBar(myToolbar);
+        ActionBar bar = getSupportActionBar();
+        bar.setDisplayHomeAsUpEnabled(true);
+
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.READ_CONTACTS)
+                != PackageManager.PERMISSION_GRANTED) {
+                // Should we show an explanation?
+                // No explanation needed, we can request the permission.
+
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.READ_CONTACTS},
+                        READ_CONTACTS_REQUEST_CODE);
+        } else {
+            me = ContactUtils.getBitmap(getContentResolver(), null); //Get user's photo
+        }
+
 
 		active = true;
 		created = true;
@@ -282,10 +312,12 @@ public class ConversationActivity extends ListActivity
         cryptor = app.getCryptor();
 
 		adapter = new ConversationAdapter(this, R.layout.conversation_item, new ArrayList<ConversationEntry>());
+        ListView list = (ListView) findViewById(R.id.conversation_list);
+        list.setAdapter(adapter);
+
 		//list = (ListView) findViewById(android.R.id.list); //how you reference that pesky bitch
 		to = (AutoCompleteTextView) findViewById(R.id.phone);
         messageBox = (EditText) findViewById(R.id.message);
-        context = this;
 
 		contacts = new ContactAdapter(this, R.layout.contact, new ArrayList<Contact>());
 		to.setAdapter(contacts);
@@ -301,44 +333,19 @@ public class ConversationActivity extends ListActivity
             public void onItemClick(AdapterView<?> parent, View view, int pos, long id) {
                 Contact c = contacts.getItem(pos);
                 ConversationActivity.number = formatNumber(c.getNumber());
-                updateTo(c.getName());
+                name = c.getName();
+                updateTo(name);
                 other = ContactUtils.getBitmap(getContentResolver(), number);
 
                 if (c.getAlpha() == HALF) {
 
-                    SharedPreferences prefs = getSharedPreferences(EncrypText.class.getSimpleName(), MODE_PRIVATE);
+                    if (ContextCompat.checkSelfPermission(ConversationActivity.this, Manifest.permission.SEND_SMS)
+                            != PackageManager.PERMISSION_GRANTED) {
 
-                    if (!prefs.contains("firstTimeExchange"))
-                    {
-                        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-                        builder.setTitle("Send key exchange request to " + c.getName() + "?");
-                        builder.setMessage("Like a friend request, this action will have to be confirmed or denied by the the other person. If they respond to the request, " +
-                                "you will both exchange your public keys and create a shared private key which will be used to encrypt your actual messages. " +
-                                "Tap Yes to send the other person a key exchange request with your public key and return to the home screen. For subsequent conversations this dialog will not be shown");
-
-                        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int buttonClicked) {
-                                getSharedPreferences(EncrypText.class.getSimpleName(), MODE_PRIVATE).edit()
-                                        .putBoolean("firstTimeExchange", false).apply();
-                                        //.putString(number, "inNegotiation").apply();
-                                startKeyExchange();
-                            }
-                        });
-                        builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int buttonClicked) {
-                                dialogInterface.cancel();
-                            }
-                        });
-
-                        AlertDialog dialog = builder.create();
-                        dialog.show();
-                    }
-                    else
-                    {
-                        Toast.makeText(ConversationActivity.this, "Sending public key", Toast.LENGTH_SHORT).show();
-                        startKeyExchange();
+                        ActivityCompat.requestPermissions(ConversationActivity.this, new String[] { Manifest.permission.SEND_SMS },
+                                SEND_SMS_REQUEST_CODE);
+                    } else {
+                        showKeyRequestDialog(name);
                     }
                 }
             }
@@ -366,9 +373,7 @@ public class ConversationActivity extends ListActivity
             }
 
         });
-		
-		me = ContactUtils.getBitmap(getContentResolver(), null); //Get user's photo
-		
+
 		Bundle b = getIntent().getExtras();
 		
 		if (b != null && b.containsKey(EncrypText.ADDRESS) && b.containsKey(EncrypText.NAME)) //if reading in existing conv
@@ -380,8 +385,6 @@ public class ConversationActivity extends ListActivity
 
 			to.setVisibility(View.GONE);
 		}
-		
-		setListAdapter(adapter);
 		
 		if (newData)
 			newData = false;
@@ -576,6 +579,58 @@ public class ConversationActivity extends ListActivity
 		}
 	}
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case READ_CONTACTS_REQUEST_CODE: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    me = ContactUtils.getBitmap(getContentResolver(), null); //Get user's photo
+
+                } else {
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Permissions Denied");
+                    builder.setMessage("This app requires the ability to read contacts to function properly. Returning to the home screen.");
+
+                    builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int buttonClicked) {
+                            finish();
+                        }
+                    });
+                }
+            }
+            break;
+            case SEND_SMS_REQUEST_CODE: {
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    showKeyRequestDialog(name);
+
+                } else {
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Permissions Denied");
+                    builder.setMessage("This app requires the ability to send sms messages to function properly. Returning to the home screen.");
+
+                    builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int buttonClicked) {
+                            finish();
+                        }
+                    });
+                }
+            }
+
+            // other 'case' lines to check for other
+            // permissions this app might request
+        }
+    }
+
 	/**
 	 * Method called by the GUI when the send message button is pressed. Hides the contact selection
 	 * box, as a contact has been selected, displays the message to send, and calls the sendText method
@@ -618,6 +673,43 @@ public class ConversationActivity extends ListActivity
 	{
 		to.setText(name + " ");
 	}
+
+    private void showKeyRequestDialog(String name)
+    {
+        SharedPreferences prefs = getSharedPreferences(EncrypText.class.getSimpleName(), MODE_PRIVATE);
+
+        if (!prefs.contains("firstTimeExchange")) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(ConversationActivity.this);
+            builder.setTitle("Send key exchange request to " + name + "?");
+            builder.setMessage("Like a friend request, this action will have to be confirmed or denied by the the other person. If they respond to the request, " +
+                    "you will both exchange your public keys and create a shared private key which will be used to encrypt your actual messages. " +
+                    "Tap Yes to send the other person a key exchange request with your public key and return to the home screen. For subsequent conversations this dialog will not be shown");
+
+            builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int buttonClicked) {
+
+                    getSharedPreferences(EncrypText.class.getSimpleName(), MODE_PRIVATE).edit()
+                            .putBoolean("firstTimeExchange", false).apply();
+                            //.putString(number, "inNegotiation").apply();
+
+                    new SendKeyTask().execute();
+                }
+            });
+            builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int buttonClicked) {
+                    dialogInterface.cancel();
+                }
+            });
+
+            AlertDialog dialog = builder.create();
+            dialog.show();
+        } else {
+            Toast.makeText(ConversationActivity.this, "Sending public key", Toast.LENGTH_SHORT).show();
+            new SendKeyTask().execute();
+        }
+    }
 
 
     private class LoadConversationArgs {
@@ -714,6 +806,22 @@ public class ConversationActivity extends ListActivity
         @Override
         protected void onPostExecute(ConversationEntry item) {
             adapter.add(item);
+        }
+    }
+
+    private class SendKeyTask extends AsyncTask<Void, Void, Void> {
+
+        @Override
+        protected Void doInBackground(Void... params) {
+
+            senderSvc.sendKey(cryptor.getMyPublicKey(), number);
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void result) {
+            ConversationActivity.this.finish();
         }
     }
 }
