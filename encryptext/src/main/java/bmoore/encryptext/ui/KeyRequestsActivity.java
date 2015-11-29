@@ -69,15 +69,15 @@ public class KeyRequestsActivity extends ListActivity {
 
         new LoadKeyRequestsTask().execute();
 
-        if(adapter.getCount() == 0)
-            adapter.add(new KeyRequest("No keys exchanged. Start a conversation from the home screen", null, null, null));
-
         ListView list = (ListView) findViewById(android.R.id.list); //how you reference that pesky bitch
 
         list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(final AdapterView<?> parent, View view, final int position, long id) {
                 final KeyRequest item = (KeyRequest) parent.getAdapter().getItem(position);
+
+                if(item.getNumber() == null)
+                    return;
 
                 AlertDialog.Builder builder = new AlertDialog.Builder(KeyRequestsActivity.this);
                 builder.setTitle("Accept " + item.getName() + "'s request?");
@@ -144,6 +144,9 @@ public class KeyRequestsActivity extends ListActivity {
         @Override
         protected void onPostExecute(List<KeyRequest> requests) {
             adapter.addAll(requests);
+
+            if(adapter.getCount() == 0)
+                adapter.add(new KeyRequest("No keys exchanged. Start a conversation from the home screen", null, null, null));
         }
     }
 }

@@ -19,6 +19,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.HashMap;
+import java.util.Map;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -43,6 +44,7 @@ public class Cryptor
     private Cipher aes;
     private KeyAgreement ecdh;
     private KeyPairGenerator pairGen;
+    private KeyFactory keyFactory;
     private SecureRandom source;
     private MessageDigest sha256;
 
@@ -52,18 +54,14 @@ public class Cryptor
     private HashMap<SecretKey, byte[]> lastReceivedCipher;
     private HashMap<SecretKey, byte[]> lastSentCipher;
 
-    //private KeyStore secretKeyDB, publicKeyDB;
-
-    //public static final char[] SECRET_STORE_PASSWORD = "3q498tyakjgDD[;*DF".toCharArray(); //to be replaced
-    //public static final char[] PUBLIC_STORE_PASSWORD = ":ET:DI34S:DLKRT#[;".toCharArray(); //to be replaced
-
-
-    public Cryptor(DBUtils utils) throws NoSuchAlgorithmException, NoSuchPaddingException
+    public Cryptor(DBUtils utils) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeySpecException
     {
         dbUtils = utils;
         lastReceivedCipher = new HashMap<>();
         lastSentCipher = new HashMap<>();
         inNegotiation = new HashMap<>();
+
+        keyFactory = KeyFactory.getInstance("EC");
 
         source = SecureRandom.getInstance("SHA1PRNG");
         pairGen = KeyPairGenerator.getInstance("EC");
@@ -71,6 +69,14 @@ public class Cryptor
         aes = Cipher.getInstance("AES/CBC/PKCS5Padding");
         ecdh = KeyAgreement.getInstance("ECDH");
         sha256 = MessageDigest.getInstance("SHA-256");
+
+        HashMap<String, byte[]> keyBlobs = dbUtils.loadKeysInNegotiation();
+
+        for(Map.Entry<String, byte[]> entry : keyBlobs.entrySet())
+        {
+            X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(entry.getValue());
+            inNegotiation.put(entry.getKey(), keyFactory.generatePublic(publicKeySpec));
+        }
     }
 
     public SecretKey createAndStoreSecretKey(String address) throws InvalidKeyTypeException, InvalidKeyException
@@ -113,13 +119,12 @@ public class Cryptor
     public boolean checkAndHold(byte[] key, String address, String name) throws NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyTypeException
     {
         X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(key);
-        KeyFactory generator = KeyFactory.getInstance("EC");
-        PublicKey k = generator.generatePublic(publicKeySpec);
+        PublicKey k = keyFactory.generatePublic(publicKeySpec);
 
         if(loadPublicKey(address) != null) //should not find our public key in the private entry it's stored in
             return false;                   //thus self-texting should be fine and renegotiations won't happen
 
-        storePublicKey(k, address, name);
+        storePublicKey(k, address);
 
         if(loadPublicKey(address) == null)
             Log.i(TAG, "Key not stored");
@@ -137,9 +142,8 @@ public class Cryptor
             return null;
         else {
             //for private keys use PKCS8EncodedKeySpec; for public keys use X509EncodedKeySpec
-            KeyFactory kf = KeyFactory.getInstance("EC");
             PKCS8EncodedKeySpec ks = new PKCS8EncodedKeySpec(keyBytes);
-            return kf.generatePrivate(ks);
+            return keyFactory.generatePrivate(ks);
         }
     }
 
@@ -150,9 +154,8 @@ public class Cryptor
         if(keyBytes == null)
             return null;
         else {
-            KeyFactory generator = KeyFactory.getInstance("EC");
             X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(keyBytes);
-            return generator.generatePublic(publicKeySpec);
+            return keyFactory.generatePublic(publicKeySpec);
         }
     }
 
@@ -185,7 +188,7 @@ public class Cryptor
         dbUtils.storeKeyBytes(address, key.getEncoded(), KeyTypes.SECRET);
     }
 
-    void storePublicKey(PublicKey key, String address, String name) throws InvalidKeyTypeException
+    void storePublicKey(PublicKey key, String address) throws InvalidKeyTypeException
     {
         dbUtils.storeKeyBytes(address, key.getEncoded(), KeyTypes.PUBLIC);
     }

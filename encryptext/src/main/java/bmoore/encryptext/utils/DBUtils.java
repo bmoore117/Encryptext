@@ -8,8 +8,10 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteStatement;
 import android.graphics.Bitmap;
 
+import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 
 import bmoore.encryptext.db.DBManager;
@@ -174,6 +176,31 @@ public class DBUtils {
 
         return statement.simpleQueryForLong();
     }
+
+    public HashMap<String, byte[]> loadKeysInNegotiation()
+    {
+        SQLiteDatabase db = manager.getReadableDatabase();
+
+        Cursor keys = db.rawQuery("select ck.phone_number, ck.public_key from contact_keys ck " +
+                "inner join key_exchange_statuses kes on ck.phone_number = " +
+                "kes.phone_number where kes.status = ?", new String[] { Contact.KeyStatus.NEEDS_REVIEW.toString() });
+
+        HashMap<String, byte[]> results = new HashMap<>();
+
+        if(keys.moveToFirst()) {
+            do {
+                String phoneNumber = keys.getString(keys.getColumnIndex(Schema.contact_keys.phone_number));
+                byte[] key = keys.getBlob(keys.getColumnIndex(Schema.contact_keys.public_key));
+
+                results.put(phoneNumber, key);
+            } while (keys.moveToNext());
+        }
+        keys.close();
+
+        return results;
+    }
+
+
 
     public byte[] loadKeyBytes(String address, Cryptor.KeyTypes type) throws InvalidKeyTypeException
     {

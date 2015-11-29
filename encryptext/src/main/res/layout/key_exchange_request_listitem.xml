@@ -11,15 +11,13 @@
         android:layout_height="wrap_content"
         android:contentDescription="@string/Placeholder"
         android:paddingEnd="6dp"
-        android:paddingStart="0dp"
-        android:src="@mipmap/ic_stat_notification"/>
+        android:paddingStart="0dp"/>
 
     <TextView
         android:id="@+id/key_exhange_request_listitem_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:paddingBottom="4dp"
-        android:text="@string/Placeholder"
         android:textSize="@dimen/convitem_size"
         android:layout_alignParentTop="true"
         android:layout_toEndOf="@+id/key_exchange_request_listitem_contact_thumb"/>
@@ -28,14 +26,12 @@
         android:id="@+id/key_exchange_request_listitem_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/Placeholder"
         android:layout_below="@+id/key_exhange_request_listitem_name"
         android:layout_toEndOf="@+id/key_exchange_request_listitem_contact_thumb"/>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/Placeholder"
         android:id="@+id/key_exhange_request_listitem_date"
         android:layout_alignBottom="@+id/key_exchange_request_listitem_status"
         android:layout_alignParentEnd="true"/>
