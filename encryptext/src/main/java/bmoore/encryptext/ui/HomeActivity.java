@@ -1,9 +1,15 @@
 package bmoore.encryptext.ui;
 
+import android.Manifest;
+import android.app.AlertDialog;
 import android.app.ListActivity;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -23,6 +29,7 @@ import bmoore.encryptext.model.ConversationAdapter;
 import bmoore.encryptext.model.ConversationEntry;
 import bmoore.encryptext.services.ReceiverSvc;
 import bmoore.encryptext.services.SenderSvc;
+import bmoore.encryptext.utils.ContactUtils;
 import bmoore.encryptext.utils.DBUtils;
 
 
@@ -48,8 +55,11 @@ public class HomeActivity extends AppCompatActivity
 
     private Menu menu;
 
+    private static final int RECEIVE_SMS_REQUEST_CODE = 3;
+    private static final String NO_CONVERSATIONS_MESSAGE = "No conversations. Talk to someone!";
 
-	/**
+
+    /**
 	 * Returns whether the activity is running or paused
 	 * @return Run state of the activity
 	 */
@@ -132,7 +142,37 @@ public class HomeActivity extends AppCompatActivity
 
         if (newPreviews)
             newPreviews = false;
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS)
+                != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECEIVE_SMS},
+                    RECEIVE_SMS_REQUEST_CODE);
+        }
 	}
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case RECEIVE_SMS_REQUEST_CODE: {
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_DENIED) {
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Permissions Denied");
+                    builder.setMessage("This app requires the ability to receive sms messages to function. Exiting the application.");
+
+                    builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int buttonClicked) {
+                            finish();
+                        }
+                    });
+                }
+            }
+        }
+    }
 
 	/**
 	 * Auto-generated method to show the settings menu. For use with action bar
@@ -221,7 +261,6 @@ public class HomeActivity extends AppCompatActivity
             newKeyRequests = false;
         }
         else {
-
             ConversationEntry item = intent.getExtras().getParcelable(EncrypText.THREAD_ITEM);
             if (item != null) {
                 updateList(item);
@@ -303,19 +342,24 @@ public class HomeActivity extends AppCompatActivity
 	 */
 	public void updateList(ConversationEntry item)
 	{
-		String toReplace = item.getNumber();
+        if(adapter.getCount() == 1 && adapter.getData().get(0).getMessage().equals(NO_CONVERSATIONS_MESSAGE)) {
+            adapter.clear();
+            adapter.add(item);
+        } else {
+            String toReplace = item.getNumber();
 
-		for(int i = 0; i < adapter.getCount(); i++)
-		{
-			if (toReplace.equals(adapter.getItem(i).getNumber()))
-			{
-				item.setPhoto(adapter.getData().get(i).getPhoto());
-				adapter.remove(adapter.getData().get(i));
-				adapter.add(item);
+            for(int i = 0; i < adapter.getCount(); i++)
+            {
+                if (toReplace.equals(adapter.getItem(i).getNumber()))
+                {
+                    item.setPhoto(adapter.getData().get(i).getPhoto());
+                    adapter.remove(adapter.getData().get(i));
+                    adapter.add(item);
 
-				return;
-			}
-		}	
+                    return;
+                }
+            }
+        }
 	}
 
     private class LoadPreviewsTask extends AsyncTask<Void, Void, List<ConversationEntry>> {
@@ -330,7 +374,7 @@ public class HomeActivity extends AppCompatActivity
             adapter.addAll(previews);
 
             if(adapter.getCount() == 0)
-                adapter.add(new ConversationEntry("No conversations. Talk to someone!",
+                adapter.add(new ConversationEntry(NO_CONVERSATIONS_MESSAGE,
                         null, null, null, null));
         }
     }

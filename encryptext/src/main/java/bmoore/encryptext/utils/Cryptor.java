@@ -116,7 +116,7 @@ public class Cryptor
         storeMyKeys(pair);
     }
 
-    public boolean checkAndHold(byte[] key, String address, String name) throws NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyTypeException
+    public boolean checkAndHold(byte[] key, String address) throws NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyTypeException
     {
         X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(key);
         PublicKey k = keyFactory.generatePublic(publicKeySpec);

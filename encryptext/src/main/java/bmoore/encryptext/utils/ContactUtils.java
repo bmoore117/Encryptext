@@ -1,7 +1,6 @@
 package bmoore.encryptext.utils;
 
 import android.content.ContentResolver;
-import android.content.Context;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -9,9 +8,6 @@ import android.net.Uri;
 import android.provider.ContactsContract;
 import android.util.Log;
 
-/**
- * Created by Benjamin Moore on 11/21/2015.
- */
 public class ContactUtils {
 
     public static String TAG = "ContactUtils";
@@ -28,7 +24,7 @@ public class ContactUtils {
     public static Bitmap getBitmap(ContentResolver contentResolver, String number)
     {
         Uri path;
-        long ID = -1L;
+        long ID;
         Cursor c;
         if (number == null)
         {
@@ -48,20 +44,18 @@ public class ContactUtils {
                 return null;
             }
 
-            if (c.moveToFirst())
-            {
-                do
-                    ID = c.getLong(0);
-                while (c.moveToNext());
+            if (!c.moveToFirst()) {
+                c.close();
+                return null;
             }
+
+            ID = c.getLong(0);
             c.close();
 
-
-            if (ID > ContactsContract.Profile.MIN_ID)
-            {
+            if (ID > ContactsContract.Profile.MIN_ID) {
                 Uri temp = ContactsContract.Contacts.CONTENT_URI;
 
-                if(temp == null) //do nothing if we couldn't access system services
+                if (temp == null) //do nothing if we couldn't access system services
                 {
                     Log.v(TAG, "Could not read Contacts.CONTENT_URI");
                     return null;
@@ -69,7 +63,7 @@ public class ContactUtils {
 
                 path = Uri.withAppendedPath(temp, "" + ID);
 
-                if(path == null) //if construction failed, do nothing
+                if (path == null) //if construction failed, do nothing
                 {
                     Log.v(TAG, "Could not construct path with supplied ID & URI");
                     return null;
@@ -106,14 +100,17 @@ public class ContactUtils {
                 return null;
             }
 
-            c.moveToFirst();
-            ID = c.getLong(0);
+            if (!c.moveToFirst()) {
+                c.close();
+                return null;
+            }
 
+            ID = c.getLong(0);
             c.close();
 
             temp = ContactsContract.Contacts.CONTENT_URI;
 
-            if(temp == null) //do nothing if we couldn't access system services
+            if (temp == null) //do nothing if we couldn't access system services
             {
                 Log.v(TAG, "Could not read Contacts.CONTENT_URI");
                 return null;
@@ -121,8 +118,7 @@ public class ContactUtils {
 
             path = Uri.withAppendedPath(temp, "" + ID);
 
-            if(path == null)
-            {
+            if (path == null) {
                 Log.v(TAG, "Could not construct Uri from Contacts.CONTENT_URI and ID provided");
                 return null;
             }
@@ -152,13 +148,20 @@ public class ContactUtils {
             return null;
         }
 
-
         Log.i(TAG, "Obtaining name");
         String[] projection = {ContactsContract.Contacts.DISPLAY_NAME };
         Cursor cr = contentResolver.query(path, projection, null, null, null);
 
-        if (cr == null || !cr.moveToFirst())
-            return "";
+        if(cr == null)
+        {
+            Log.v(TAG, "Content resolver returned no results for personal contact name query");
+            return null;
+        }
+
+        if (!cr.moveToFirst()) {
+            cr.close();
+            return null;
+        }
 
         String name = cr.getString(0); //can use zero, bc only queried for one column
         cr.close();

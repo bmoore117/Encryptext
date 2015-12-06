@@ -16,6 +16,8 @@ import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.google.i18n.phonenumbers.PhoneNumberUtil;
+
 import javax.crypto.NoSuchPaddingException;
 
 import bmoore.encryptext.utils.Cryptor;
@@ -46,7 +48,8 @@ public class EncrypText extends Application
 {
 	private Files manager;
     private Cryptor cryptor;
-	private String phoneNumber;
+	private String isoCountryCode;
+    private PhoneNumberUtil phoneNumberUtil;
     private DBUtils dbUtils;
 
     public static final String THREAD_POSITION = "p";
@@ -59,6 +62,7 @@ public class EncrypText extends Application
     public static final String NAME = "n";
     public static final String QUIT_FLAG = "q";
     public static final String PDUS = "pdus";
+    public static final String FORMAT = "format";
     public static final String FLAGS = "f";
     public static final String DATE = "d";
     public static final int FLAG_REMOVE_PUBLIC_KEY = 117;
@@ -78,8 +82,11 @@ public class EncrypText extends Application
 
 		PRNGFixes.apply();
 
-        //TelephonyManager mgr = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-        //phoneNumber = formatNumber(mgr.getLine1Number());
+        TelephonyManager tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+        isoCountryCode = tm.getSimCountryIso();
+
+        phoneNumberUtil = PhoneNumberUtil
+                .getInstance();
 
 		//manager = new Files(this, phoneNumber);
         dbUtils = new DBUtils(this);
@@ -110,6 +117,11 @@ public class EncrypText extends Application
 
     public DBUtils getDbUtils() { return dbUtils; }
 
-    String getPhoneNumber() { return phoneNumber; }
+    public PhoneNumberUtil getPhoneNumberUtil() {
+        return phoneNumberUtil;
+    }
 
+    public String getIsoCountryCode() {
+        return isoCountryCode.toUpperCase();
+    }
 }

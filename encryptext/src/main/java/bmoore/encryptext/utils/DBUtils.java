@@ -1,12 +1,16 @@
 package bmoore.encryptext.utils;
 
+import android.Manifest;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteStatement;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.support.v4.content.ContextCompat;
 
 import java.security.PublicKey;
 import java.util.ArrayList;
@@ -14,6 +18,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
+import bmoore.encryptext.R;
 import bmoore.encryptext.db.DBManager;
 import bmoore.encryptext.db.Schema;
 import bmoore.encryptext.model.Contact;
@@ -27,9 +32,11 @@ public class DBUtils {
 
     private DBManager manager;
     private ContentResolver contentResolver;
+    private Context context;
 
     public DBUtils(Context context)
     {
+        this.context = context;
         manager = new DBManager(context);
         contentResolver = context.getContentResolver();
     }
@@ -38,8 +45,19 @@ public class DBUtils {
     {
         SQLiteDatabase db = manager.getReadableDatabase();
 
-        Bitmap me = ContactUtils.getBitmap(contentResolver, null);
-        Bitmap other = ContactUtils.getBitmap(contentResolver, number);
+        Bitmap me, other;
+
+        if(ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+            me = ContactUtils.getBitmap(contentResolver, null);
+            other = ContactUtils.getBitmap(contentResolver, number);
+
+            if(other == null) {
+                other = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_account_box_black_48dp);
+            }
+        } else {
+            me = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_account_box_black_48dp);
+            other = me;
+        }
 
         Cursor c = db.rawQuery("select * from conversations c where c.message_id >= ? order by c.message_id asc;", new String[]{String.valueOf(startFromMessageId)});
 
@@ -97,7 +115,17 @@ public class DBUtils {
             do {
 
                 String number = conversations.getString(conversations.getColumnIndex(Schema.conversations.phone_number));
-                Bitmap other = ContactUtils.getBitmap(contentResolver, number);
+
+                Bitmap other;
+                if(ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+                    other = ContactUtils.getBitmap(contentResolver, number);
+
+                    if(other == null) {
+                        other = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_account_box_black_48dp);
+                    }
+                } else {
+                    other = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_account_box_black_48dp);
+                }
 
                 Cursor previews = db.rawQuery("select * from conversations where message_id in (select max(message_id) from conversations where phone_number = ?)",
                         new String[]{number});
@@ -157,7 +185,13 @@ public class DBUtils {
                 String name = statuses.getString(statuses.getColumnIndex(Schema.key_exchange_statuses.name));
                 String status = statuses.getString(statuses.getColumnIndex(Schema.key_exchange_statuses.status));
                 String date = statuses.getString(statuses.getColumnIndex(Schema.key_exchange_statuses.status_date));
-                Bitmap other = ContactUtils.getBitmap(contentResolver, number);
+
+                Bitmap other;
+                if(ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+                    other = ContactUtils.getBitmap(contentResolver, number);
+                } else {
+                    other = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_account_box_black_48dp);
+                }
 
                 results.add(new KeyRequest(name, number, status, date, other));
 

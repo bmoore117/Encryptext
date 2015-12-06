@@ -1,5 +1,6 @@
 package bmoore.encryptext.services;
 
+import android.Manifest;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -7,11 +8,19 @@ import android.app.Service;
 import android.app.TaskStackBuilder;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.content.res.Resources;
+import android.content.res.TypedArray;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.support.v4.content.ContextCompat;
 import android.telephony.SmsMessage;
 import android.util.Log;
+import android.util.TypedValue;
 import android.widget.Toast;
 
 import java.security.InvalidAlgorithmParameterException;
@@ -19,7 +28,6 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.LinkedList;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -55,6 +63,7 @@ public class ReceiverSvc extends Service
     private TreeMap<String, TreeMap<Integer, byte[][]>> pendingTexts;
     private TreeMap<String, ArrayList<ConversationEntry>> finishedTexts;
     private static TreeMap<String, TreeMap<Integer, Timer>> messageExp;
+    private int color;
 
     private final Thread worker = new Thread("Receiver Worker")
     {
@@ -152,9 +161,8 @@ public class ReceiverSvc extends Service
                 Log.i(TAG, temp);
 
                 try {
-                    String name = ContactUtils.getContactName(getContentResolver(), address);
-                    if (cryptor.checkAndHold(key, address, name)) {
-                        showKeyExchangeNotification(address, name);
+                    if (cryptor.checkAndHold(key, address)) {
+                        showKeyExchangeNotification(address);
 
                         thread.remove(Integer.valueOf(seq));
                         Log.i(TAG, "AddMsgFragment Processing status " + processingStatus);
@@ -268,14 +276,19 @@ public class ReceiverSvc extends Service
 	 */
 	private void buildPdus(Bundle bundle)
 	{
-		Object[] pdus = (Object[]) bundle.get("pdus");
+		Object[] pdus = (Object[]) bundle.get(EncrypText.PDUS);
+        String format = bundle.getString(EncrypText.FORMAT);
 
 		SmsMessage sms;
 
 		for (Object pdu : pdus)
 		{
-			//--retrieve relevant information--//
-			sms = SmsMessage.createFromPdu((byte[]) pdu);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                sms = SmsMessage.createFromPdu((byte[]) pdu, format);
+            }
+            else {
+                sms = SmsMessage.createFromPdu((byte[]) pdu);
+            }
 
             String address = sms.getOriginatingAddress();
             byte[] header = readHeader(sms.getUserData());
@@ -297,9 +310,16 @@ public class ReceiverSvc extends Service
 	 */
 	private ConversationEntry buildThreadEntry(String address, String message)
 	{
-
         Log.i(TAG, "Building thread entry");
-        String name = ContactUtils.getContactName(getContentResolver(), address);
+
+        String name = null;
+        if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+            name = ContactUtils.getContactName(getContentResolver(), address);
+        }
+
+        if(name == null) { // needed as a separate check because devices below API 23 will always pass above
+            name = address;
+        }
 
         Log.i(TAG, "Building date");
         String time = DateUtils.buildDate();
@@ -337,10 +357,17 @@ public class ReceiverSvc extends Service
         }
     }
 
-    private void showKeyExchangeNotification(String address, String name)
+    private void showKeyExchangeNotification(String address)
     {
         SharedPreferences prefs = getSharedPreferences(EncrypText.class.getSimpleName(), MODE_PRIVATE);
         Notification.Builder builder = new Notification.Builder(this);
+
+        String name;
+        if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+            name = ContactUtils.getContactName(getContentResolver(), address);
+        } else {
+            name = address;
+        }
 
         if(prefs.contains(address)) {
             prefs.edit().remove(address).apply();
@@ -377,7 +404,6 @@ public class ReceiverSvc extends Service
             PendingIntent p1 = PendingIntent.getService(this, 1, yes, PendingIntent.FLAG_UPDATE_CURRENT);
             builder.addAction(R.drawable.ic_done_black_24dp, "Yes", p1);
 
-
             Intent no = new Intent(this, ReceiverSvc.class);
             no.putExtra(EncrypText.ADDRESS, address);
             no.putExtra(EncrypText.FLAGS, EncrypText.FLAG_REMOVE_PUBLIC_KEY);
@@ -396,13 +422,19 @@ public class ReceiverSvc extends Service
             builder.setDeleteIntent(p3);
             builder.setContentTitle("Request from " + name);
             builder.setContentText(name + " is requesting to swap public keys with you. Accept and reply with your key?");
-            builder.setLargeIcon(ContactUtils.getBitmap(getContentResolver(), address));
+
+            if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+                builder.setLargeIcon(ContactUtils.getBitmap(getContentResolver(), address));
+            } else {
+                builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.ic_account_box_black_48dp));
+            }
+
             builder.setAutoCancel(false);
         }
 
         builder.setDefaults(Notification.DEFAULT_VIBRATE | Notification.DEFAULT_SOUND);
         builder.setSmallIcon(R.mipmap.ic_stat_notification);
-        builder.setLights(-16711936, 1000, 3000);
+        builder.setLights(color, 1000, 3000);
 
         ((NotificationManager) getSystemService(ReceiverSvc.NOTIFICATION_SERVICE)
         ).notify(address.hashCode(), builder.build());
@@ -433,7 +465,7 @@ public class ReceiverSvc extends Service
 		builder.setContentIntent(p);
 		builder.setAutoCancel(true);
         builder.setDeleteIntent(del);
-		builder.setLights(-16711936, 1000, 3000);
+		builder.setLights(color, 1000, 3000);
 		builder.setDefaults(Notification.DEFAULT_VIBRATE | Notification.DEFAULT_SOUND);
 
 
@@ -459,7 +491,6 @@ public class ReceiverSvc extends Service
 		else if (HomeActivity.isActive())
 		{
             //manager.writePreview(item, this);
-
 			Intent in = new Intent(this, HomeActivity.class);
 			item.setAddress(address);
 			in.putExtra(EncrypText.THREAD_ITEM, item);
@@ -559,6 +590,12 @@ public class ReceiverSvc extends Service
 	public void onCreate()
 	{
 		super.onCreate();
+
+        // The attributes you want retrieved
+        int[] attrs = {R.attr.colorPrimary};
+        TypedArray ta = obtainStyledAttributes(R.style.AppTheme, attrs);
+        color = ta.getColor(0, Color.BLACK);
+        ta.recycle();
 
         Log.i(TAG, "ReceiverSvc created");
 
