@@ -24,6 +24,7 @@ public class ConversationEntry implements Parcelable
     private String number;
 	private String name;
     private String date;
+    private Integer imageResourceId;
 	private Bitmap photo;
 
 
@@ -39,6 +40,12 @@ public class ConversationEntry implements Parcelable
 		this.number = p.readString();
 		this.name = p.readString();
 		this.date = p.readString();
+        this.imageResourceId = p.readInt();
+
+        if(imageResourceId == Integer.MIN_VALUE) {
+            imageResourceId = null;
+        }
+
 		this.photo = p.readParcelable(Bitmap.class.getClassLoader());
 	}
 
@@ -134,6 +141,14 @@ public class ConversationEntry implements Parcelable
         this.messageId = messageId;
     }
 
+    public void setImageResourceId(Integer imageResourceId) {
+        this.imageResourceId = imageResourceId;
+    }
+
+    public Integer getImageResourceId() {
+        return imageResourceId;
+    }
+
 	public void writeToParcel(Parcel p, int paramInt)
 	{
         p.writeLong(messageId);
@@ -141,6 +156,7 @@ public class ConversationEntry implements Parcelable
 		p.writeString(number);
 		p.writeString(name);
 		p.writeString(date);
+        p.writeInt(imageResourceId == null ? Integer.MIN_VALUE : imageResourceId);
 		p.writeParcelable(photo, 0);
 	}
 }

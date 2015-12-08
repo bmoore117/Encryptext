@@ -16,6 +16,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.provider.ContactsContract.CommonDataKinds;
@@ -82,7 +83,8 @@ public class ConversationActivity extends AppCompatActivity
 	private static String number = "";
     private String name;
 	private Bitmap me;
-	private Bitmap other;
+	//private Bitmap other;
+    private boolean useDrawable;
     private SenderSvc senderSvc;
     private SecretKey secretKey;
     private ArrayList<Contact> suggestions;
@@ -298,6 +300,8 @@ public class ConversationActivity extends AppCompatActivity
         ActionBar bar = getSupportActionBar();
         bar.setDisplayHomeAsUpEnabled(true);
 
+        useDrawable = false;
+
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
 
                 ActivityCompat.requestPermissions(this,
@@ -305,6 +309,12 @@ public class ConversationActivity extends AppCompatActivity
                         READ_CONTACTS_REQUEST_CODE);
         } else {
             me = ContactUtils.getBitmap(getContentResolver(), null); //Get user's photo
+
+            if(me == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                useDrawable = true;
+            } else {
+                me = BitmapFactory.decodeResource(getResources(), R.drawable.ic_account_box_gray_48dp);
+            }
         }
 
 		active = true;
@@ -342,11 +352,11 @@ public class ConversationActivity extends AppCompatActivity
                     name = c.getName();
                     updateTo(name);
 
-                    if(ContextCompat.checkSelfPermission(ConversationActivity.this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+                    /*if(ContextCompat.checkSelfPermission(ConversationActivity.this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
                         other = ContactUtils.getBitmap(getContentResolver(), number);
                     } else {
-                        other = BitmapFactory.decodeResource(getResources(), R.drawable.ic_account_box_black_48dp);
-                    }
+                        other = BitmapFactory.decodeResource(getResources(), R.drawable.ic_account_box_gray_48dp);
+                    }*/
 
                     if (c.getAlpha() == HALF) {
                         checkPermissionOrShowDialog();
@@ -387,15 +397,15 @@ public class ConversationActivity extends AppCompatActivity
 		{
 			number = b.getString(EncrypText.ADDRESS);
 
-            if(ContextCompat.checkSelfPermission(ConversationActivity.this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+            /*if(ContextCompat.checkSelfPermission(ConversationActivity.this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
                 other = ContactUtils.getBitmap(getContentResolver(), number);
 
-                if(other == null) {
-                    other = BitmapFactory.decodeResource(getResources(), R.drawable.ic_account_box_black_48dp);
+                if(other == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    useDrawable = true;
+                } else {
+                    other = BitmapFactory.decodeResource(getResources(), R.drawable.ic_account_box_gray_48dp);
                 }
-            } else {
-                other = BitmapFactory.decodeResource(getResources(), R.drawable.ic_account_box_black_48dp);
-            }
+            }*/
 
             new LoadConversationTask().execute(new LoadConversationArgs(number, 0));
             new LoadSecretKeyTask().execute(number);
@@ -482,7 +492,11 @@ public class ConversationActivity extends AppCompatActivity
         }
         else if(item != null)
         {
-            item.setPhoto(other);
+            /*if(useDrawable) {
+                item.setImageResourceId(R.drawable.ic_account_box_gray_48dp);
+            } else {
+                item.setPhoto(other);
+            }*/
             adapter.add(item);
             conversationChanged = true;
         }
@@ -490,7 +504,11 @@ public class ConversationActivity extends AppCompatActivity
 		{
 			for (ConversationEntry entry : messages) //do not need times. Have been assigned in svc
             {
-                entry.setPhoto(this.other);
+                /*if(useDrawable) {
+                    entry.setImageResourceId(R.drawable.ic_account_box_gray_48dp);
+                } else {
+                    entry.setPhoto(other);
+                }*/
 				adapter.add(entry);
             }
 
@@ -602,6 +620,12 @@ public class ConversationActivity extends AppCompatActivity
 
                     me = ContactUtils.getBitmap(getContentResolver(), null); //Get user's photo
 
+                    if(me == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        useDrawable = true;
+                    } else {
+                        me = BitmapFactory.decodeResource(getResources(), R.drawable.ic_account_box_gray_48dp);
+                    }
+
                 } else {
 
                     AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -611,7 +635,11 @@ public class ConversationActivity extends AppCompatActivity
                     builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialogInterface, int buttonClicked) {
-                            me = BitmapFactory.decodeResource(getResources(), R.drawable.ic_account_box_black_48dp);
+                            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                useDrawable = true;
+                            } else {
+                                me = BitmapFactory.decodeResource(getResources(), R.drawable.ic_account_box_gray_48dp);
+                            }
                         }
                     });
                 }
@@ -722,6 +750,11 @@ public class ConversationActivity extends AppCompatActivity
     {
         to.setVisibility(View.GONE);
         ConversationEntry item = new ConversationEntry(text, number, "Me", "Sending", me);
+
+        if(useDrawable) {
+            item.setImageResourceId(R.drawable.ic_account_box_gray_48dp);
+        }
+
         new SendMessageTask().execute(new SendMessageArgs(item, adapter.getCount(), secretKey));
         conversationChanged = true;
         messageBox.getText().clear();

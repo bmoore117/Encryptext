@@ -42,10 +42,16 @@ public class ConversationAdapter extends ArrayAdapter<ConversationEntry>
 		ImageView Photo = (ImageView) row.findViewById(R.id.conversation_item_contact_thumb);
 		TextView Date = (TextView) row.findViewById(R.id.conversation_item_date);
 
-		From.setText(data.get(pos).getName());
-		Message.setText(data.get(pos).getMessage());
-		Photo.setImageBitmap(data.get(pos).getPhoto());
-		Date.setText(DateUtils.formatDate(data.get(pos).getDate()));
+        ConversationEntry item = data.get(pos);
+
+		From.setText(item.getName());
+		Message.setText(item.getMessage());
+        if(item.getImageResourceId() != null) {
+            Photo.setImageResource(item.getImageResourceId());
+        } else {
+            Photo.setImageBitmap(item.getPhoto());
+        }
+		Date.setText(DateUtils.formatDate(item.getDate()));
 
 		return row;
 

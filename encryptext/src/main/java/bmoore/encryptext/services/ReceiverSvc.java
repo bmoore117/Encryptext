@@ -9,8 +9,8 @@ import android.app.TaskStackBuilder;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.content.res.Resources;
 import android.content.res.TypedArray;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.Binder;
@@ -20,7 +20,6 @@ import android.os.IBinder;
 import android.support.v4.content.ContextCompat;
 import android.telephony.SmsMessage;
 import android.util.Log;
-import android.util.TypedValue;
 import android.widget.Toast;
 
 import java.security.InvalidAlgorithmParameterException;
@@ -324,8 +323,27 @@ public class ReceiverSvc extends Service
         Log.i(TAG, "Building date");
         String time = DateUtils.buildDate();
         Log.i(TAG, "Date of " + time);
-		
-		return new ConversationEntry(message, address, name, time, null);
+
+
+        boolean useDrawable = false;
+        Bitmap pic = null;
+        if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+            pic = ContactUtils.getBitmap(getContentResolver(), address);
+        }
+
+        if(pic == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            useDrawable = true;
+        } else if (pic == null) {
+            pic = BitmapFactory.decodeResource(getResources(), R.drawable.ic_account_box_gray_48dp);
+        }
+
+		ConversationEntry item = new ConversationEntry(message, address, name, time, pic);
+
+        if(useDrawable) {
+            item.setImageResourceId(R.drawable.ic_account_box_gray_48dp);
+        }
+
+		return item;
 	}
 
     /**
@@ -426,7 +444,7 @@ public class ReceiverSvc extends Service
             if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
                 builder.setLargeIcon(ContactUtils.getBitmap(getContentResolver(), address));
             } else {
-                builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.ic_account_box_black_48dp));
+                builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.ic_account_box_gray_48dp));
             }
 
             builder.setAutoCancel(false);

@@ -10,11 +10,10 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteStatement;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Build;
 import android.support.v4.content.ContextCompat;
 
-import java.security.PublicKey;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
@@ -45,18 +44,28 @@ public class DBUtils {
     {
         SQLiteDatabase db = manager.getReadableDatabase();
 
-        Bitmap me, other;
+        boolean useDrawableMe = false, useDrawableOther = false;
 
+        Bitmap me = null, other = null;
         if(ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
             me = ContactUtils.getBitmap(contentResolver, null);
             other = ContactUtils.getBitmap(contentResolver, number);
+        }
 
-            if(other == null) {
-                other = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_account_box_black_48dp);
+        if(me == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            useDrawableMe = true;
+        } else if(me == null) {
+            me = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_account_box_gray_48dp);
+        }
+
+        if(other == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            useDrawableOther = true;
+        } else if(other == null) {
+            if(me != null) {
+                other = me;
+            } else {
+                other = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_account_box_gray_48dp);
             }
-        } else {
-            me = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_account_box_black_48dp);
-            other = me;
         }
 
         Cursor c = db.rawQuery("select * from conversations c where c.message_id >= ? order by c.message_id asc;", new String[]{String.valueOf(startFromMessageId)});
@@ -69,7 +78,23 @@ public class DBUtils {
                 String message = c.getString(c.getColumnIndex(Schema.conversations.message));
                 String name = c.getString(c.getColumnIndex(Schema.conversations.name));
                 String date = c.getString(c.getColumnIndex(Schema.conversations.status_date));
-                results.add(new ConversationEntry(messageId, message, name, date, "Me".equals(name) ? me : other));
+                ConversationEntry item = new ConversationEntry(messageId, message, name, date, null);
+
+                if("Me".equals(name)) {
+                    if(useDrawableMe) {
+                        item.setImageResourceId(R.drawable.ic_account_box_gray_48dp);
+                    } else {
+                        item.setPhoto(me);
+                    }
+                } else {
+                    if(useDrawableOther) {
+                        item.setImageResourceId(R.drawable.ic_account_box_gray_48dp);
+                    } else {
+                        item.setPhoto(other);
+                    }
+                }
+
+                results.add(item);
             } while (c.moveToNext());
         }
         c.close();
@@ -106,6 +131,7 @@ public class DBUtils {
     {
 
         SQLiteDatabase db = manager.getReadableDatabase();
+        boolean useDrawable = false;
 
         Cursor conversations = db.rawQuery("select distinct phone_number from conversations", null);
 
@@ -116,15 +142,15 @@ public class DBUtils {
 
                 String number = conversations.getString(conversations.getColumnIndex(Schema.conversations.phone_number));
 
-                Bitmap other;
+                Bitmap other = null;
                 if(ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
                     other = ContactUtils.getBitmap(contentResolver, number);
+                }
 
-                    if(other == null) {
-                        other = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_account_box_black_48dp);
-                    }
-                } else {
-                    other = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_account_box_black_48dp);
+                if(other == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    useDrawable = true;
+                } else if(other == null) {
+                    other = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_account_box_gray_48dp);
                 }
 
                 Cursor previews = db.rawQuery("select * from conversations where message_id in (select max(message_id) from conversations where phone_number = ?)",
@@ -135,7 +161,13 @@ public class DBUtils {
                         String message = previews.getString(previews.getColumnIndex(Schema.conversations.message));
                         String name = previews.getString(previews.getColumnIndex(Schema.conversations.name));
                         String date = previews.getString(previews.getColumnIndex(Schema.conversations.status_date));
-                        results.add(new ConversationEntry(message, number, name, date, other));
+
+                        ConversationEntry item = new ConversationEntry(message, number, name, date, other);
+                        if(useDrawable) {
+                            item.setImageResourceId(R.drawable.ic_account_box_gray_48dp);
+                        }
+
+                        results.add(item);
                     } while (previews.moveToNext());
                 }
                 previews.close();
@@ -190,7 +222,7 @@ public class DBUtils {
                 if(ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
                     other = ContactUtils.getBitmap(contentResolver, number);
                 } else {
-                    other = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_account_box_black_48dp);
+                    other = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_account_box_gray_48dp);
                 }
 
                 results.add(new KeyRequest(name, number, status, date, other));
