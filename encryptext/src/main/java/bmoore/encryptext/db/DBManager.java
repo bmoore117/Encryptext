@@ -15,6 +15,7 @@ public class DBManager extends SQLiteOpenHelper {
         db.execSQL(Schema.key_exchange_statuses.DDL);
         db.execSQL(Schema.contact_keys.DDL);
         db.execSQL(Schema.conversations.DDL);
+        db.execSQL(Schema.last_encrypted_blocks.DDL);
     }
 
     @Override

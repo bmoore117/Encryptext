@@ -29,8 +29,6 @@ public class EncrypCert extends Certificate
         this.address = address;
     }
 
-
-
     @Override
     public byte[] getEncoded()
     {

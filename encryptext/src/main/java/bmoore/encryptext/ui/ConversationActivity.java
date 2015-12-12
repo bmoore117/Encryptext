@@ -326,7 +326,7 @@ public class ConversationActivity extends AppCompatActivity
         cryptor = app.getCryptor();
         phoneNumberUtil = app.getPhoneNumberUtil();
 
-                adapter = new ConversationAdapter(this, R.layout.conversation_item, new ArrayList<ConversationEntry>());
+        adapter = new ConversationAdapter(this, R.layout.conversation_item, new ArrayList<ConversationEntry>());
         ListView list = (ListView) findViewById(R.id.conversation_list);
         list.setAdapter(adapter);
 
@@ -396,7 +396,6 @@ public class ConversationActivity extends AppCompatActivity
 		if (b != null && b.containsKey(EncrypText.ADDRESS) && b.containsKey(EncrypText.NAME)) //if reading in existing conv
 		{
 			number = b.getString(EncrypText.ADDRESS);
-
             /*if(ContextCompat.checkSelfPermission(ConversationActivity.this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
                 other = ContactUtils.getBitmap(getContentResolver(), number);
 
@@ -452,6 +451,11 @@ public class ConversationActivity extends AppCompatActivity
         created = false;
         newConfs = false;
         newData = false;
+
+        if(secretKey != null) {
+            cryptor.storeLastEncryptedBlock(secretKey, number);
+        }
+
         number = "";
 
         //manager.resetPointer(number + ".dat");

@@ -96,6 +96,12 @@ public class Cryptor
         return finalKey;
     }
 
+    public void storeLastEncryptedBlock(SecretKey key, String address) {
+        byte[] lastSent = lastReceivedCipher.get(key);
+
+        dbUtils.storeEncryptedBlock(address, lastSent);
+    }
+
     public PublicKey getMyPublicKey()
     {
         return pair.getPublic();
@@ -132,16 +138,6 @@ public class Cryptor
         inNegotiation.put(address, k);
 
         return true;
-    }
-
-    public SecretKey createSecretKey()
-    {
-        byte[] orig = new byte[] {2, 24, 25, 24, 15, 78, 44, 34, 99, 10};
-
-        byte[] newSecret = sha256.digest(orig);
-        SecretKey finalKey = new SecretKeySpec(newSecret, "AES");
-
-        return finalKey;
     }
 
     PrivateKey loadPrivateKey(String address) throws InvalidKeyTypeException, NoSuchAlgorithmException, InvalidKeySpecException
@@ -237,7 +233,7 @@ public class Cryptor
         }
     }
 
-    public byte[] decryptMessage(byte[] cipherTextPacket, SecretKey key, int containsIV) throws InvalidKeyException, BadPaddingException,
+    public byte[] decryptMessage(byte[] cipherTextPacket, SecretKey key, int containsIV, String address) throws InvalidKeyException, BadPaddingException,
             IllegalBlockSizeException, InvalidAlgorithmParameterException
     {
 
@@ -258,6 +254,10 @@ public class Cryptor
         }
         else
         {
+            if(lastReceivedCipher.get(key) == null) {
+                lastReceivedCipher.put(key, dbUtils.loadEncryptedBlock(address));
+            }
+
             AlgorithmParameterSpec ivSpec = new IvParameterSpec(lastReceivedCipher.get(key));
             aes.init(Cipher.DECRYPT_MODE, key, ivSpec);
             plaintext = aes.doFinal(cipherTextPacket);

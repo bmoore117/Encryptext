@@ -55,4 +55,16 @@ public class Schema {
         public static final String status_date = "status_date";
         public static final String message = "message";
     }
+
+    public static class last_encrypted_blocks {
+        public static final String DDL = "create table last_encrypted_blocks (" +
+                "phone_number text NOT NULL," +
+                "encrypted_block blob," +
+                "FOREIGN KEY(phone_number) references conversations(phone_number)" +
+                ");";
+
+        public static final String phone_number = "phone_number";
+        public static final String encrypted_block = "encrypted_block";
+    }
+
 }

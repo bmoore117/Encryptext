@@ -17,6 +17,7 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Looper;
 import android.support.v4.content.ContextCompat;
 import android.telephony.SmsMessage;
 import android.util.Log;
@@ -50,6 +51,9 @@ import bmoore.encryptext.utils.InvalidKeyTypeException;
 
 public class ReceiverSvc extends Service
 {
+    private static final String TAG = "ReceiverSvc";
+    private static boolean created;
+    private static TreeMap<String, TreeMap<Integer, Timer>> messageExp;
     private final IBinder binder = new ReceiverBinder();
 	private final int MAX_DATA_BYTES = 133;
     private final int HEADER_LENGTH = 4;
@@ -58,12 +62,8 @@ public class ReceiverSvc extends Service
     private Cryptor cryptor;
     private EncrypText app;
     private int processingStatus;
-    private static boolean created;
     private TreeMap<String, TreeMap<Integer, byte[][]>> pendingTexts;
     private TreeMap<String, ArrayList<ConversationEntry>> finishedTexts;
-    private static TreeMap<String, TreeMap<Integer, Timer>> messageExp;
-    private int color;
-
     private final Thread worker = new Thread("Receiver Worker")
     {
         @Override
@@ -85,13 +85,17 @@ public class ReceiverSvc extends Service
             }
         }
     };
+    private int color;
 
-    private static final String TAG = "ReceiverSvc";
+    public static boolean isCreated()
+    {
+        return created;
+    }
 
 	/**
 	 * Method to handle slotting a new PDU into the service holding data structures, and checking
-	 * if that PDU completes a logical message, as denoted by sequence number. 
-	 * 
+	 * if that PDU completes a logical message, as denoted by sequence number.
+	 *
 	 * First cancels any message expiration timer for the phone & sequence number combination that
 	 * the incoming PDU belongs to, so as to prevent issues with concurrent access, and then checks to
 	 * see if any relevant conversation thread exists at all for the number the PDU is from. If not,
@@ -99,10 +103,10 @@ public class ReceiverSvc extends Service
 	 * or completes a logical message. If so, passes to the activities or creates a notification. If
 	 * not, starts a countdown. If no additional message fragments are received before the count reaches
 	 * zero, the message fragment is thrown out.
-	 * 
+	 *
 	 * Note: implement some maximum size on logical messages to prevent memory spam? Stop timers in buildPdus?
 	 * Avoid writing ack to file?
-	 * 
+	 *
 	 * @param address - A String phone number
 	 * @param header - a byte array representing the header of the PDU (UDH)
 	 * @param body - a byte array representing the body of a PDU
@@ -178,7 +182,12 @@ public class ReceiverSvc extends Service
                 Log.i(TAG, "Building complete message");
                 try {
                     SecretKey key = cryptor.loadSecretKey(address);
-                    String message = buildMessage(thread.get(seq), key, seq);
+                    String message = buildMessage(thread.get(seq), key, seq, address);
+
+                    //we don't know if we'll get killed before the user goes to that conversation
+                    if(!ConversationActivity.isActive() || !address.equals(ConversationActivity.currentNumber())) {
+                        cryptor.storeLastEncryptedBlock(key, address);
+                    }
 
                     thread.remove(Integer.valueOf(seq));
                     Log.i(TAG, "AddMsgFragment Processing status " + processingStatus);
@@ -203,19 +212,17 @@ public class ReceiverSvc extends Service
 		}
 	}
 
-
 	/**
 	 * Method to construct a string message out of an array of PDUs. Loops through and
 	 * constructs a byte array that is the concatenation of the PDUs, and then constructs
 	 * a new String out of that array.
-	 * 
+	 *
 	 * @param message - a two layer byte array
 	 * @return - a String
 	 */
-	private String buildMessage(byte[][] message, SecretKey key, int sequenceNo)
+	private String buildMessage(byte[][] message, SecretKey key, int sequenceNo, String address)
 	{
 		byte[] buffer = new byte[message.length*(MAX_DATA_BYTES - HEADER_LENGTH)];
-
 
 		for(int i = 0; i < message.length; i++)
 		{
@@ -230,7 +237,7 @@ public class ReceiverSvc extends Service
         byte[] decryptedBuffer = new byte[] {0};
 
         try {
-            decryptedBuffer = cryptor.decryptMessage(buffer, key, sequenceNo);
+            decryptedBuffer = cryptor.decryptMessage(buffer, key, sequenceNo, address);
         }
         catch (InvalidKeyException | BadPaddingException | IllegalBlockSizeException | InvalidAlgorithmParameterException e) {
             Log.e(TAG, "While decrypting message", e);
@@ -268,9 +275,9 @@ public class ReceiverSvc extends Service
 	/**
 	 * Method to process all incoming PDUs in a bundle. Loops through bundle content,
 	 * creating an SmsMessage instance for each PDU so as to be able to read the originating
-	 * phone number from, as well as reading a byte header and body for each PDU and then 
+	 * phone number from, as well as reading a byte header and body for each PDU and then
 	 * calling addMsgFragment on each part.
-	 * 
+	 *
 	 * @param bundle - PDUs wrapped in an Android bundle
 	 */
 	private void buildPdus(Bundle bundle)
@@ -298,11 +305,11 @@ public class ReceiverSvc extends Service
 
 	/**
 	 * Method to retrieve the contact name associated with a phone number.
-	 * Queries android contacts for name associated with number. If no 
+	 * Queries android contacts for name associated with number. If no
 	 * results, returns a ConversationEntry with the number the message is
 	 * from in the name slot
 	 *
-	 * 
+	 *
 	 * @param address - a string representing a phone number
 	 * @param message - a string representing the body of a text message
 	 * @return A ConversationEntry filled out with a name if possible
@@ -497,7 +504,7 @@ public class ReceiverSvc extends Service
 		String address = item.getNumber();
         dbUtils.storeMessage(item);
 		//manager.writeSMS(address, item, -1, this); //should add to end
-		
+
 		if ((ConversationActivity.isActive()) && (ConversationActivity.currentNumber().equals(address)))
 		{
             Log.i(TAG, "Passing");
@@ -508,7 +515,6 @@ public class ReceiverSvc extends Service
 		}
 		else if (HomeActivity.isActive())
 		{
-            //manager.writePreview(item, this);
 			Intent in = new Intent(this, HomeActivity.class);
 			item.setAddress(address);
 			in.putExtra(EncrypText.THREAD_ITEM, item);
@@ -591,11 +597,6 @@ public class ReceiverSvc extends Service
 	{
 		return binder;
 	}
-
-    public static boolean isCreated()
-    {
-        return created;
-    }
 
     @Override
     public void onDestroy()

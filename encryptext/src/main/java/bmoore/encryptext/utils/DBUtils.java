@@ -102,6 +102,31 @@ public class DBUtils {
         return results;
     }
 
+    public void storeEncryptedBlock(String address, byte[] block) {
+        SQLiteDatabase db = manager.getWritableDatabase();
+
+        ContentValues values = new ContentValues();
+        values.put(Schema.last_encrypted_blocks.encrypted_block, block);
+        values.put(Schema.last_encrypted_blocks.phone_number, address);
+
+        db.insertWithOnConflict(Schema.last_encrypted_blocks.class.getSimpleName(), null, values, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    public byte[] loadEncryptedBlock(String address) {
+        SQLiteDatabase db = manager.getReadableDatabase();
+
+        Cursor c = db.rawQuery("select " + Schema.last_encrypted_blocks.encrypted_block + " from "
+                + Schema.last_encrypted_blocks.class.getSimpleName() + " where " + Schema.last_encrypted_blocks.phone_number + " = ?", new String[]{address});
+
+        byte[] key = null;
+        if(c.moveToFirst()) {
+            key = c.getBlob(c.getColumnIndex(Schema.last_encrypted_blocks.encrypted_block));
+        }
+        c.close();
+
+        return key;
+    }
+
     public long storeMessage(ConversationEntry item)
     {
         SQLiteDatabase db = manager.getWritableDatabase();
