@@ -105,11 +105,28 @@ public class DBUtils {
     public void storeEncryptedBlock(String address, byte[] block) {
         SQLiteDatabase db = manager.getWritableDatabase();
 
+        Cursor c = db.rawQuery("select count(*) from " + Schema.last_encrypted_blocks.class.getSimpleName() + " where " + Schema.last_encrypted_blocks.phone_number + " = ?", new String[]{address});
+
+        int exists = 0;
+        if(c.moveToFirst())
+            exists = c.getInt(0);
+        c.close();
+
         ContentValues values = new ContentValues();
         values.put(Schema.last_encrypted_blocks.encrypted_block, block);
         values.put(Schema.last_encrypted_blocks.phone_number, address);
 
-        db.insertWithOnConflict(Schema.last_encrypted_blocks.class.getSimpleName(), null, values, SQLiteDatabase.CONFLICT_REPLACE);
+        //db.insertWithOnConflict(Schema.last_encrypted_blocks.class.getSimpleName(), null, values, SQLiteDatabase.CONFLICT_REPLACE);
+
+        if(exists == 0) {
+            values.put(Schema.last_encrypted_blocks.phone_number, address);
+            db.insert(Schema.last_encrypted_blocks.class.getSimpleName(), "null", values);
+        }
+        else {
+            String whereClause = Schema.last_encrypted_blocks.phone_number + " = ?";
+            String[] whereArg = new String[] {address};
+            db.update(Schema.last_encrypted_blocks.class.getSimpleName(), values, whereClause, whereArg);
+        }
     }
 
     public byte[] loadEncryptedBlock(String address) {

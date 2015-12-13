@@ -400,7 +400,7 @@ public class ReceiverSvc extends Service
             }
 
             builder.setContentTitle("Key exchange complete");
-            builder.setContentText("You are ready to begin sending messages to " + name);
+            builder.setContentText("Ready to send messages to " + name);
             builder.setAutoCancel(true);
         } else {
 
@@ -464,17 +464,17 @@ public class ReceiverSvc extends Service
         builder.setSmallIcon(R.mipmap.ic_stat_notification);
         builder.setContentTitle("Message from " + item.getName());
 
-        String text = "";
-        for(ConversationEntry msg : finishedTexts.get(item.getNumber()))
-            text += msg.getMessage() + "\n";
+
+        ArrayList<ConversationEntry> heldTexts = finishedTexts.get(item.getNumber());
+        String text = heldTexts.get(heldTexts.size() - 1).getMessage();
 
         builder.setContentText(text);
         builder.setContentIntent(p);
         builder.setAutoCancel(true);
         builder.setDeleteIntent(del);
         builder.setLights(color, 1000, 3000);
+        builder.setPriority(Notification.PRIORITY_HIGH); //for heads up notification
         builder.setDefaults(Notification.DEFAULT_VIBRATE | Notification.DEFAULT_SOUND);
-
 
         ((NotificationManager)getSystemService(ReceiverSvc.NOTIFICATION_SERVICE) //Note: valid?
         ).notify(item.getNumber().hashCode(), builder.build());
@@ -623,12 +623,14 @@ public class ReceiverSvc extends Service
 
     public int onStartCommand(Intent intent, int paramInt1, int paramInt2)
     {
-        Message message = Message.obtain();
-        message.setData(intent.getExtras());
+        if(intent != null) {
+            Message message = Message.obtain();
+            message.setData(intent.getExtras());
 
-        handler.dispatchMessage(message);
+            handler.dispatchMessage(message);
+        }
 
-        return START_REDELIVER_INTENT;
+        return START_STICKY;
     }
 
     public void handleJob(Bundle b) {

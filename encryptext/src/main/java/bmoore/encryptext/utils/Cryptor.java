@@ -97,9 +97,11 @@ public class Cryptor
     }
 
     public void storeLastEncryptedBlock(SecretKey key, String address) {
-        byte[] lastSent = lastReceivedCipher.get(key);
+        byte[] lastReceived = lastReceivedCipher.get(key);
 
-        dbUtils.storeEncryptedBlock(address, lastSent);
+        if(lastReceived != null) {
+            dbUtils.storeEncryptedBlock(address, lastReceived);
+        }
     }
 
     public PublicKey getMyPublicKey()
