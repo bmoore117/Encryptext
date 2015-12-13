@@ -34,11 +34,14 @@ import android.widget.AdapterView;
 import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.i18n.phonenumbers.NumberParseException;
 import com.google.i18n.phonenumbers.PhoneNumberUtil;
 import com.google.i18n.phonenumbers.Phonenumber;
+
+import org.w3c.dom.Text;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -352,6 +355,8 @@ public class ConversationActivity extends AppCompatActivity
                     name = c.getName();
                     updateTo(name);
 
+                    setEncryptionStatus();
+
                     /*if(ContextCompat.checkSelfPermission(ConversationActivity.this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
                         other = ContactUtils.getBitmap(getContentResolver(), number);
                     } else {
@@ -493,6 +498,7 @@ public class ConversationActivity extends AppCompatActivity
         if(key != null)
         {
             secretKey = key;
+            setEncryptionStatus();
         }
         else if(item != null)
         {
@@ -734,6 +740,7 @@ public class ConversationActivity extends AppCompatActivity
                 //we have a number, so try loading a key
                 try {
                     secretKey = cryptor.loadSecretKey(number);
+                    setEncryptionStatus();
                 } catch (InvalidKeyTypeException e) {
                     Log.e(TAG, "Error loading key for " + address, e);
                     Toast.makeText(ConversationActivity.this, "Error loading key for " + address, Toast.LENGTH_SHORT).show();
@@ -762,6 +769,14 @@ public class ConversationActivity extends AppCompatActivity
         new SendMessageTask().execute(new SendMessageArgs(item, adapter.getCount(), secretKey));
         conversationChanged = true;
         messageBox.getText().clear();
+    }
+
+    private void setEncryptionStatus(){
+        if(secretKey != null) {
+            TextView view = (TextView) findViewById(R.id.conversation_encryption_status);
+            view.setText(getString(R.string.messages_encrypted));
+            view.setTextColor(ContextCompat.getColor(ConversationActivity.this, R.color.lime_green));
+        }
     }
 
 	/**
@@ -867,6 +882,7 @@ public class ConversationActivity extends AppCompatActivity
         @Override
         protected void onPostExecute(SecretKey key) {
             secretKey = key;
+            setEncryptionStatus();
         }
     }
 
