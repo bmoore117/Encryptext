@@ -323,7 +323,6 @@ public class ConversationActivity extends AppCompatActivity
 		active = true;
 		created = true;
         conversationChanged = false;
-        boolean newvar = false;
 
         app = ((EncrypText) getApplication());
         dbUtils = app.getDbUtils();
