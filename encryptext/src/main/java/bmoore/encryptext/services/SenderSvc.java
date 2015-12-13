@@ -6,15 +6,19 @@ import android.app.Service;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.IBinder;
+import android.os.Looper;
+import android.os.Message;
 import android.telephony.SmsManager;
 import android.util.Log;
 import android.widget.Toast;
 
+import java.lang.ref.WeakReference;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
-import java.util.Calendar;
 import java.util.LinkedList;
 import java.util.TreeMap;
 
@@ -22,13 +26,13 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.SecretKey;
 
+import bmoore.encryptext.EncrypText;
+import bmoore.encryptext.model.ConversationEntry;
 import bmoore.encryptext.model.MessageConfirmation;
 import bmoore.encryptext.ui.ConversationActivity;
-import bmoore.encryptext.model.ConversationEntry;
-import bmoore.encryptext.utils.Cryptor;
-import bmoore.encryptext.EncrypText;
-import bmoore.encryptext.utils.DBUtils;
 import bmoore.encryptext.ui.HomeActivity;
+import bmoore.encryptext.utils.Cryptor;
+import bmoore.encryptext.utils.DBUtils;
 import bmoore.encryptext.utils.DateUtils;
 import bmoore.encryptext.utils.InvalidKeyTypeException;
 
@@ -42,7 +46,6 @@ public class SenderSvc extends Service {
     private static final int MAX_DATA_BYTES = 133;
     private static final int HEADER_SIZE = 4;
     private final IBinder binder = new SenderBinder();
-    private volatile LinkedList<Bundle> jobs;
     private TreeMap<String, TreeMap<Integer, MessageConfirmation>> partialConfs;
     private TreeMap<String, TreeMap<Integer, String>> confirmTimes;
     private int processingStatus, sequenceNo;
@@ -54,27 +57,7 @@ public class SenderSvc extends Service {
 
     private static boolean created;
 
-    private final Thread worker = new Thread("Sender Worker")
-    {
-        @Override
-        public void run()
-        {
-            synchronized (worker)
-            {
-                while(true)
-                {
-                    handleJobs();
-                    try
-                    {
-                        worker.wait();
-                    }
-                    catch (InterruptedException e)
-                    {
-                    }
-                }
-            }
-        }
-    };
+    private SenderHandler handler;
 
 
     @Override
@@ -85,7 +68,6 @@ public class SenderSvc extends Service {
         Log.i(TAG, "SenderSvc created");
 
         //created = true;
-        jobs = new LinkedList<>();
         processingStatus = 0;
         app = ((EncrypText) getApplication());
         cryptor = app.getCryptor();
@@ -102,91 +84,59 @@ public class SenderSvc extends Service {
         partialConfs = new TreeMap<>();
         confirmTimes = new TreeMap<>();
 
+        HandlerThread worker = new HandlerThread("Sender Worker");
         worker.start();
+        handler = new SenderHandler(worker.getLooper(), this);
 
         created = true;
     }
-
-    public void addJob(Bundle b)
-    {
-        jobs.add(b);
-
-        if(worker.getState().equals(Thread.State.WAITING))
-        {
-            synchronized (worker)
-            {
-                Log.i(TAG, "Bumping thread");
-                worker.notify();
-            }
-        }
-    }
-
 
     @Override
     public int onStartCommand(Intent intent, int one, int two)
     {
         Log.i(TAG, "Intent received");
 
-        Bundle b = new Bundle();
-        b.putString(EncrypText.ADDRESS, intent.getStringExtra(EncrypText.ADDRESS));
-        b.putInt(EncrypText.THREAD_POSITION, intent.getIntExtra(EncrypText.THREAD_POSITION, -1));
-        b.putSerializable(EncrypText.KEY, intent.getSerializableExtra(EncrypText.KEY));
-        b.putBoolean(EncrypText.QUIT_FLAG, intent.getBooleanExtra(EncrypText.QUIT_FLAG, false));
-        b.putInt(EncrypText.FLAGS, intent.getIntExtra(EncrypText.FLAGS, -1));
+        Message message = Message.obtain();
+        message.setData(intent.getExtras());
 
-        jobs.add(b);
-
-        if(worker.getState().equals(Thread.State.WAITING))
-        {
-            synchronized (worker)
-            {
-                Log.i(TAG, "Bumping thread");
-                worker.notify();
-            }
-        }
+        handler.dispatchMessage(message);
 
         return START_REDELIVER_INTENT;
     }
 
-    private void handleJobs()
+    private void handleJob(Bundle b)
     {
-        while(jobs.size() > 0)
+        if (b != null)
         {
-            Log.i(TAG, "Grabbing bundle");
-            Bundle b = jobs.removeFirst();
+            String address = b.getString(EncrypText.ADDRESS);
+            int pos = b.getInt(EncrypText.THREAD_POSITION, -1);
+            Key key = (Key) b.getSerializable(EncrypText.KEY);
+            boolean shouldQuit = b.getBoolean(EncrypText.QUIT_FLAG, false);
+            int flags = b.getInt(EncrypText.FLAGS, -1);
 
-            if (b != null)
+            if(key != null && address != null)
             {
-                String address = b.getString(EncrypText.ADDRESS);
-                int pos = b.getInt(EncrypText.THREAD_POSITION, -1);
-                Key key = (Key) b.getSerializable(EncrypText.KEY);
-                boolean shouldQuit = b.getBoolean(EncrypText.QUIT_FLAG, false);
-                int flags = b.getInt(EncrypText.FLAGS, -1);
+                Log.i(TAG, "Sending public key");
+                sendKey(key, address);
 
-                if(key != null && address != null)
-                {
-                    Log.i(TAG, "Sending public key");
-                    sendKey(key, address);
+                if(flags == EncrypText.FLAG_GENERATE_SECRET_KEY) {
+                    //cancel notification - action doesn't automatically do so
+                    NotificationManager manager = (NotificationManager) getSystemService(ReceiverSvc.NOTIFICATION_SERVICE);
+                    manager.cancel(address.hashCode());
 
-                    if(flags == EncrypText.FLAG_GENERATE_SECRET_KEY) {
-                        //cancel notification - action doesn't automatically do so
-                        NotificationManager manager = (NotificationManager) getSystemService(ReceiverSvc.NOTIFICATION_SERVICE);
-                        manager.cancel(address.hashCode());
-
-                        generateSecretKey(address);
-                    }
+                    generateSecretKey(address);
                 }
-                else if(address != null && pos != -1)
-                {
-                    Log.i(TAG, "Confirming message part");
-                    confirmMessagePart(address, pos);
-                }
-                else if(shouldQuit)
-                    tryQuit();
             }
-            else
+            else if(address != null && pos != -1)
+            {
+                Log.i(TAG, "Confirming message part");
+                confirmMessagePart(address, pos);
+            }
+            else if(shouldQuit)
                 tryQuit();
         }
+        else
+            tryQuit();
     }
 
     private void tryQuit()
@@ -403,5 +353,20 @@ public class SenderSvc extends Service {
 
     public static boolean isCreated() {
         return created;
+    }
+
+    static class SenderHandler extends Handler {
+        private final WeakReference<SenderSvc> reference;
+
+        SenderHandler(Looper looper, SenderSvc svc) {
+            super(looper);
+            reference = new WeakReference<>(svc);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            SenderSvc svc = reference.get();
+            svc.handleJob(msg.getData());
+        }
     }
 }
