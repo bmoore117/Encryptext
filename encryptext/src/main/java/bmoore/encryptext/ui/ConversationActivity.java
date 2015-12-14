@@ -167,11 +167,24 @@ public class ConversationActivity extends AppCompatActivity
                         {
                             String name = c.getString(i);
                             String number = c.getString(j);
+
+                            if(number == null) {
+                                continue;
+                            }
+
                             Uri picPath = Uri.withAppendedPath(Contacts.CONTENT_URI, c.getString(k));
                             Bitmap thumb = BitmapFactory.decodeStream(
                                     Contacts.openContactPhotoInputStream(getContentResolver(), picPath));
 
                             try {
+
+                                String formattedNumber = formatNumber(number);
+
+                                if(formattedNumber == null) {
+                                    suggestions.add(new Contact(name, "Error", thumb, HALF));
+                                    continue;
+                                }
+
                                 secretKey = cryptor.loadSecretKey(formatNumber(number));
 
                                 if (secretKey == null) //might have to re-engineer contact to store secret key
@@ -350,8 +363,14 @@ public class ConversationActivity extends AppCompatActivity
              */
             public void onItemClick(AdapterView<?> parent, View view, int pos, long id) {
                 Contact c = contacts.getItem(pos);
+                String number = c.getNumber();
+
+                if("Error".equals(number)) {
+                    return;
+                }
+
                 try {
-                    ConversationActivity.number = formatNumber(c.getNumber());
+                    ConversationActivity.number = formatNumber(number);
                     name = c.getName();
                     updateTo(name);
 
