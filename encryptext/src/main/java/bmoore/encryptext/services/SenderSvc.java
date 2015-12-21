@@ -204,8 +204,13 @@ public class SenderSvc extends Service {
                 k++;
             }
 
-            for(byte[] part : message)
-                mgr.sendDataMessage(address, null, APPLICATION_PORT, part, null, null);
+            for(byte[] part : message) {
+                Intent in = new Intent(SENT_INTENT);
+                PendingIntent sent = PendingIntent.getBroadcast(this, 0, in,
+                        PendingIntent.FLAG_UPDATE_CURRENT);
+
+                mgr.sendDataMessage(address, null, APPLICATION_PORT, part, sent, null);
+            }
         }
     }
 

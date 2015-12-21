@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.telephony.SmsManager;
 import android.util.Log;
+import android.widget.Toast;
 
 import bmoore.encryptext.EncrypText;
 import bmoore.encryptext.ui.ConversationActivity;
@@ -57,16 +58,22 @@ public class SendingStatus extends BroadcastReceiver
             in.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
             in.putExtra("s", false);
 
-			if(result == SmsManager.RESULT_ERROR_GENERIC_FAILURE)
-				in.putExtra("e", "Sending failed");
-			else if(result == SmsManager.RESULT_ERROR_NO_SERVICE)
-				in.putExtra("e", "No service");
-			else if(result == SmsManager.RESULT_ERROR_NULL_PDU)
-				in.putExtra("e", "Empty message");
-			else if(result == SmsManager.RESULT_ERROR_RADIO_OFF)
-				in.putExtra("e", "Radio off");
-
-            context.startActivity(in);
+			if(result == SmsManager.RESULT_ERROR_GENERIC_FAILURE) {
+                Log.e(TAG, "Sending failed");
+                Toast.makeText(context, "Sending failed", Toast.LENGTH_SHORT).show();
+            }
+			else if(result == SmsManager.RESULT_ERROR_NO_SERVICE) {
+                Log.e(TAG, "No service");
+                Toast.makeText(context, "No service", Toast.LENGTH_SHORT).show();
+            }
+			else if(result == SmsManager.RESULT_ERROR_NULL_PDU) {
+                Log.e(TAG, "Empty message");
+                Toast.makeText(context, "Empty message", Toast.LENGTH_SHORT).show();
+            }
+			else if(result == SmsManager.RESULT_ERROR_RADIO_OFF) {
+                Log.e(TAG, "Radio off");
+                Toast.makeText(context, "Radio off", Toast.LENGTH_SHORT).show();
+            }
 		}
 	}
 }

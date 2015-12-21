@@ -78,23 +78,23 @@ public class ConversationActivity extends AppCompatActivity
     private static final int READ_CONTACTS_REQUEST_CODE = 1;
     private static final int SEND_SMS_REQUEST_CODE = 2;
 
-	private static boolean active = false;
-	private static boolean created = false;
-	private static boolean newData = false;
+    private static boolean active = false;
+    private static boolean created = false;
+    private static boolean newData = false;
     private static boolean newConfs = false;
     private boolean conversationChanged;
-	private static String number = "";
+    private static String number = "";
     private String name;
-	private Bitmap me;
-	//private Bitmap other;
+    private Bitmap me;
+    //private Bitmap other;
     private boolean useDrawable;
     private SenderSvc senderSvc;
     private SecretKey secretKey;
     private ArrayList<Contact> suggestions;
     private String query;
-	private ConversationAdapter adapter;
-	private ContactAdapter contacts;
-	private AutoCompleteTextView to;
+    private ConversationAdapter adapter;
+    private ContactAdapter contacts;
+    private AutoCompleteTextView to;
     private EditText messageBox;
     private EncrypText app;
     private DBUtils dbUtils;
@@ -149,7 +149,7 @@ public class ConversationActivity extends AppCompatActivity
                     String[] projection = {Contacts.DISPLAY_NAME, CommonDataKinds.Phone.NUMBER,
                             CommonDataKinds.Phone.CONTACT_ID};
                     ContentResolver cr = getContentResolver();
-                    Cursor c = cr.query(person, projection, null, null, null);
+                    Cursor c = cr.query(person, projection, null, null, Contacts.DISPLAY_NAME + " ASC LIMIT 10");
 
                     if(c == null)
                     {
@@ -178,14 +178,14 @@ public class ConversationActivity extends AppCompatActivity
 
                             try {
 
-                                String formattedNumber = formatNumber(number);
+                                /*String formattedNumber = formatNumber(number);
 
                                 if(formattedNumber == null) {
                                     suggestions.add(new Contact(name, "Error", thumb, HALF));
                                     continue;
-                                }
+                                }*/
 
-                                secretKey = cryptor.loadSecretKey(formatNumber(number));
+                                secretKey = cryptor.loadSecretKey(number);
 
                                 if (secretKey == null) //might have to re-engineer contact to store secret key
                                     suggestions.add(new Contact(name, number, thumb, HALF));
@@ -194,10 +194,10 @@ public class ConversationActivity extends AppCompatActivity
                             } catch (InvalidKeyTypeException e) {
                                 Log.e(TAG, "Unable to load secret key", e);
                                 Toast.makeText(ConversationActivity.this, "Unable to load secret key", Toast.LENGTH_SHORT).show();
-                            } catch (NumberParseException e) {
+                            } /*catch (NumberParseException e) {
                                 Log.e(TAG, "Error parsing entered phone number", e);
                                 Toast.makeText(ConversationActivity.this, "Error parsing entered phone number", Toast.LENGTH_SHORT).show();
-                            }
+                            }*/
                         }
                         while (c.moveToNext());
                     }
@@ -217,25 +217,25 @@ public class ConversationActivity extends AppCompatActivity
         };
     }
 
-	/**
-	 * Method provided for the service to poll this activity and find out the conversation it is in
-	 *
-	 * @return the phone number of the current conversation
-	 */
-	public static String currentNumber()
-	{
-		return number;
-	}
+    /**
+     * Method provided for the service to poll this activity and find out the conversation it is in
+     *
+     * @return the phone number of the current conversation
+     */
+    public static String currentNumber()
+    {
+        return number;
+    }
 
-	/**
-	 * Bookkeeper method for the class
-	 *
-	 * @return whether the activity is running or paused
-	 */
-	public static boolean isActive()
-	{
-		return active;
-	}
+    /**
+     * Bookkeeper method for the class
+     *
+     * @return whether the activity is running or paused
+     */
+    public static boolean isActive()
+    {
+        return active;
+    }
 
     /**
      * Method to edit a String into the format Android likes for phone number use:
@@ -244,24 +244,31 @@ public class ConversationActivity extends AppCompatActivity
      * @return the formatted input
      */
     private String formatNumber(String number) throws NumberParseException {
-        Phonenumber.PhoneNumber phNumberProto = phoneNumberUtil.parse(number, app.getIsoCountryCode());
 
-        if (phoneNumberUtil.isValidNumber(phNumberProto)) {
-            return phoneNumberUtil.format(phNumberProto, PhoneNumberUtil.PhoneNumberFormat.E164);
-        } else {
-            return null;
+        Phonenumber.PhoneNumber phNumberProto = null;
+
+        for (String r : phoneNumberUtil.getSupportedRegions()) {
+            // check if it's a possible number
+            if (phoneNumberUtil.isPossibleNumber(number, r)) {
+                phNumberProto = phoneNumberUtil.parse(number, r);
+
+                // check if it's a valid number for the given region
+                if (phoneNumberUtil.isValidNumberForRegion(phNumberProto, r))
+                    return phoneNumberUtil.format(phNumberProto, PhoneNumberUtil.PhoneNumberFormat.E164);
+            }
         }
+        return null;
     }
 
-	/**
-	 * Bookkeeper method for the class
-	 *
-	 * @return whether an instance has been created
-	 */
-	public static boolean isCreated()
-	{
-		return created;
-	}
+        /**
+         * Bookkeeper method for the class
+         *
+         * @return whether an instance has been created
+         */
+    public static boolean isCreated()
+    {
+        return created;
+    }
 
     public static void setCreated()
     {
@@ -273,14 +280,14 @@ public class ConversationActivity extends AppCompatActivity
         newConfs = true;
     }
 
-	/**
-	 * Method for the service to alert this activity that it has new data to read in from
-	 * file when resumed via the launcher
-	 */
-	public static void setNewData()
-	{
-		newData = true;
-	}
+    /**
+     * Method for the service to alert this activity that it has new data to read in from
+     * file when resumed via the launcher
+     */
+    public static void setNewData()
+    {
+        newData = true;
+    }
 
     private ServiceConnection senderConnection = new ServiceConnection() {
         @Override
@@ -296,20 +303,20 @@ public class ConversationActivity extends AppCompatActivity
         }
     };
 
-	/**
-	 * Performs the initial setup when creating an instance of this activity. Performs three key tasks. First,
-	 * it initializes a textChangedListener that retrieves contact suggestions based on what the user types, and
-	 * second, it initializes the contact selection box with an itemClickListener that loads in a contact
-	 * picture, name, and phone number when the user taps a contact suggestion provided by the listener.
-	 *
-	 * If this activity was started with a conversation to load, this method extracts the data needed to
-	 * perform the load from the intent used to start the activity, and handles the loading and display.
-	 *
-	 */
-	public void onCreate(Bundle savedInstanceState)
-	{
-		super.onCreate(savedInstanceState);
-		setContentView(R.layout.conversation);
+    /**
+     * Performs the initial setup when creating an instance of this activity. Performs three key tasks. First,
+     * it initializes a textChangedListener that retrieves contact suggestions based on what the user types, and
+     * second, it initializes the contact selection box with an itemClickListener that loads in a contact
+     * picture, name, and phone number when the user taps a contact suggestion provided by the listener.
+     *
+     * If this activity was started with a conversation to load, this method extracts the data needed to
+     * perform the load from the intent used to start the activity, and handles the loading and display.
+     *
+     */
+    public void onCreate(Bundle savedInstanceState)
+    {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.conversation);
 
         Toolbar myToolbar = (Toolbar) findViewById(R.id.conversation_toolbar);
         setSupportActionBar(myToolbar);
@@ -320,9 +327,9 @@ public class ConversationActivity extends AppCompatActivity
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
 
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.READ_CONTACTS},
-                        READ_CONTACTS_REQUEST_CODE);
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.READ_CONTACTS},
+                    READ_CONTACTS_REQUEST_CODE);
         } else {
             me = ContactUtils.getBitmap(getContentResolver(), null); //Get user's photo
 
@@ -333,8 +340,8 @@ public class ConversationActivity extends AppCompatActivity
             }
         }
 
-		active = true;
-		created = true;
+        active = true;
+        created = true;
         conversationChanged = false;
 
         app = ((EncrypText) getApplication());
@@ -346,17 +353,17 @@ public class ConversationActivity extends AppCompatActivity
         ListView list = (ListView) findViewById(R.id.conversation_list);
         list.setAdapter(adapter);
 
-		//list = (ListView) findViewById(android.R.id.list); //how you reference that pesky bitch
-		to = (AutoCompleteTextView) findViewById(R.id.phone);
+        //list = (ListView) findViewById(android.R.id.list); //how you reference that pesky bitch
+        to = (AutoCompleteTextView) findViewById(R.id.phone);
         messageBox = (EditText) findViewById(R.id.message);
 
-		contacts = new ContactAdapter(this, R.layout.contact, new ArrayList<Contact>());
-		to.setAdapter(contacts);
+        contacts = new ContactAdapter(this, R.layout.contact, new ArrayList<Contact>());
+        to.setAdapter(contacts);
 
         shouldLoaderWait = true;
         loader.start();
 
-		to.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        to.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             /**
              * Method to update the respective class variables and fill the contact selection box when
              * a suggestion has been tapped on. Calls formatNumber, updateTo, and setBitmap.
@@ -369,8 +376,8 @@ public class ConversationActivity extends AppCompatActivity
                     return;
                 }
 
-                try {
-                    ConversationActivity.number = formatNumber(number);
+                //try {
+                    ConversationActivity.number = "+18034043014";
                     name = c.getName();
                     updateTo(name);
 
@@ -385,14 +392,14 @@ public class ConversationActivity extends AppCompatActivity
                     if (c.getAlpha() == HALF) {
                         checkPermissionOrShowDialog();
                     }
-                } catch (NumberParseException e) {
+                /*} catch (NumberParseException e) {
                     Log.e(TAG, "Error parsing entered phone number", e);
                     Toast.makeText(ConversationActivity.this, "Error parsing entered phone number", Toast.LENGTH_SHORT).show();
-                }
+                }*/
             }
         });
 
-		to.addTextChangedListener(new TextWatcher() {
+        to.addTextChangedListener(new TextWatcher() {
             public void afterTextChanged(Editable field) {
                 if (field.toString().equals("")) //if box cleared, do not try to show a list
                     return;
@@ -415,11 +422,11 @@ public class ConversationActivity extends AppCompatActivity
 
         });
 
-		Bundle b = getIntent().getExtras();
+        Bundle b = getIntent().getExtras();
 
-		if (b != null && b.containsKey(EncrypText.ADDRESS) && b.containsKey(EncrypText.NAME)) //if reading in existing conv
-		{
-			number = b.getString(EncrypText.ADDRESS);
+        if (b != null && b.containsKey(EncrypText.ADDRESS) && b.containsKey(EncrypText.NAME)) //if reading in existing conv
+        {
+            number = b.getString(EncrypText.ADDRESS);
             /*if(ContextCompat.checkSelfPermission(ConversationActivity.this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
                 other = ContactUtils.getBitmap(getContentResolver(), number);
 
@@ -433,12 +440,12 @@ public class ConversationActivity extends AppCompatActivity
             new LoadConversationTask().execute(new LoadConversationArgs(number, 0));
             new LoadSecretKeyTask().execute(number);
 
-			to.setVisibility(View.GONE);
-		}
+            to.setVisibility(View.GONE);
+        }
 
-		if (newData)
-			newData = false;
-	}
+        if (newData)
+            newData = false;
+    }
 
     public void onStart()
     {
@@ -465,12 +472,12 @@ public class ConversationActivity extends AppCompatActivity
         }*/
     }
 
-	/**
-	 * Bookkeeping method for the class. Sets the static variable created to false when
-	 * android is destroying this activity.
-	 */
-	public void onDestroy()
-	{
+    /**
+     * Bookkeeping method for the class. Sets the static variable created to false when
+     * android is destroying this activity.
+     */
+    public void onDestroy()
+    {
         //Toast.makeText(this, "Destroying", Toast.LENGTH_SHORT).show();
         created = false;
         newConfs = false;
@@ -485,22 +492,22 @@ public class ConversationActivity extends AppCompatActivity
         //manager.resetPointer(number + ".dat");
         //unbindService(receiverConnection);
         unbindService(senderConnection);
-		super.onDestroy();
-	}
+        super.onDestroy();
+    }
 
-	/**
-	 * Hook method to handle new messages passed to this activity from the service.
-	 * If a single message has been passed, this method extracts it from the intent and
-	 * displays it. If multiple messages have been passed, this method extracts the ArrayList
-	 * they were in, and constructs full ConversationEntries out of them, then displaying them.
-	 * Third scenario use unclear.
-	 *
-	 * @param intent - the message this activity has been passed
-	 */
-	public void onNewIntent(Intent intent)
-	{
-		active = true;
-		Bundle b = intent.getExtras();
+    /**
+     * Hook method to handle new messages passed to this activity from the service.
+     * If a single message has been passed, this method extracts it from the intent and
+     * displays it. If multiple messages have been passed, this method extracts the ArrayList
+     * they were in, and constructs full ConversationEntries out of them, then displaying them.
+     * Third scenario use unclear.
+     *
+     * @param intent - the message this activity has been passed
+     */
+    public void onNewIntent(Intent intent)
+    {
+        active = true;
+        Bundle b = intent.getExtras();
 
         if(b == null)
         {
@@ -509,9 +516,9 @@ public class ConversationActivity extends AppCompatActivity
         }
 
         ConversationEntry item = b.getParcelable(EncrypText.THREAD_ITEM);
-		ArrayList<ConversationEntry> messages = b.getParcelableArrayList(EncrypText.MULTIPLE_THREAD_ITEMS);
-		String time = b.getString(EncrypText.TIME);
-		String address = b.getString(EncrypText.ADDRESS);
+        ArrayList<ConversationEntry> messages = b.getParcelableArrayList(EncrypText.MULTIPLE_THREAD_ITEMS);
+        String time = b.getString(EncrypText.TIME);
+        String address = b.getString(EncrypText.ADDRESS);
         SecretKey key = (SecretKey) b.getSerializable(EncrypText.KEY);
 
         if(key != null)
@@ -529,90 +536,90 @@ public class ConversationActivity extends AppCompatActivity
             adapter.add(item);
             conversationChanged = true;
         }
-		else if (messages != null)
-		{
-			for (ConversationEntry entry : messages) //do not need times. Have been assigned in svc
+        else if (messages != null)
+        {
+            for (ConversationEntry entry : messages) //do not need times. Have been assigned in svc
             {
                 /*if(useDrawable) {
                     entry.setImageResourceId(R.drawable.ic_account_box_gray_48dp);
                 } else {
                     entry.setPhoto(other);
                 }*/
-				adapter.add(entry);
+                adapter.add(entry);
             }
 
             conversationChanged = true;
-		}
-		else if (address != null) //for jumping to new conv via notification
-		{
-			adapter.clear();
+        }
+        else if (address != null) //for jumping to new conv via notification
+        {
+            adapter.clear();
             number = address;
             new LoadConversationTask().execute(new LoadConversationArgs(number, 0));
-			AutoCompleteTextView To = (AutoCompleteTextView)findViewById(R.id.phone);
-			To.setVisibility(View.GONE);
+            AutoCompleteTextView To = (AutoCompleteTextView)findViewById(R.id.phone);
+            To.setVisibility(View.GONE);
             conversationChanged = false;
             created = true;
-		}
-		else if (time != null)
-		{
-			int pos = intent.getIntExtra(EncrypText.THREAD_POSITION, -1);
+        }
+        else if (time != null)
+        {
+            int pos = intent.getIntExtra(EncrypText.THREAD_POSITION, -1);
 
             ConversationEntry temp = adapter.getItem(pos);
             temp.setDate(time);
             adapter.notifyDataSetChanged();
 
             conversationChanged = true;
-		}
-		else
-		{
-			String error = b.getString(EncrypText.ERROR);
-			adapter.getItem(adapter.getCount() - 1).setDate(error); //create fixed length
+        }
+        else
+        {
+            String error = b.getString(EncrypText.ERROR);
+            adapter.getItem(adapter.getCount() - 1).setDate(error); //create fixed length
             conversationChanged = true;
-		}
+        }
 
-		newData = false;
-	}
+        newData = false;
+    }
 
-	/**
-	 * Method to handle updating the preview files when this activity is navigated away from.
-	 * Retrieves the last item in this conversation to use as the new preview, and writes it, notifying
-	 * the main activity to refresh itself.
-	 */
-	public void onPause()
-	{
-		active = false;
+    /**
+     * Method to handle updating the preview files when this activity is navigated away from.
+     * Retrieves the last item in this conversation to use as the new preview, and writes it, notifying
+     * the main activity to refresh itself.
+     */
+    public void onPause()
+    {
+        active = false;
 
         //lastReadPosition = manager.getLastReadPosition(number);
 
-		if (adapter.getCount() > 0 && conversationChanged)
-		{
+        if (adapter.getCount() > 0 && conversationChanged)
+        {
 			/*ConversationEntry item = adapter.getItem(adapter.getCount() - 1);
 			manager.writePreview(new ConversationEntry(item.getMessage(), number, name,
                     item.getDate(), null), this);*/
-			HomeActivity.setNewPreviews();
+            HomeActivity.setNewPreviews();
             conversationChanged = false;
-		}
-		super.onPause();
-	}
+        }
+        super.onPause();
+    }
 
-	public void onStop()
-	{
+    public void onStop()
+    {
         //Toast.makeText(this, "Stopping", Toast.LENGTH_SHORT).show();
 
-		super.onStop();
-	}
+        super.onStop();
+    }
 
-	/**
-	 * Method to handle picking up any new messages when this activity is resumed from the launcher. Calls
-	 * findShift to figure out how many messages have been sent since the file was last read, and then calls
-	 * the files class to read the file with the shift amount passed in. Cancels any pending notifications
-	 * for this conversation and informs the service to release any memory held by messages for this
-	 * conversation, also setting the class newData marker to false
-	 */
-	public void onResume()
-	{
-		super.onResume();
-		active = true;
+    /**
+     * Method to handle picking up any new messages when this activity is resumed from the launcher. Calls
+     * findShift to figure out how many messages have been sent since the file was last read, and then calls
+     * the files class to read the file with the shift amount passed in. Cancels any pending notifications
+     * for this conversation and informs the service to release any memory held by messages for this
+     * conversation, also setting the class newData marker to false
+     */
+    public void onResume()
+    {
+        super.onResume();
+        active = true;
         //Toast.makeText(this, "Resuming", Toast.LENGTH_SHORT).show();
 
         if(newConfs)
@@ -626,21 +633,21 @@ public class ConversationActivity extends AppCompatActivity
             newConfs = false;
         }
 
-		if (newData)
-		{
+        if (newData)
+        {
             new LoadConversationTask().execute(new LoadConversationArgs(number, adapter.getData().get(adapter.getData().size() - 1).getMessageId()));
 
             ((NotificationManager)getSystemService(
                     Context.NOTIFICATION_SERVICE)).cancel(number.hashCode());
-			//receiverSvc.removeHeldTexts(number); on a theory, dont need this
+            //receiverSvc.removeHeldTexts(number); on a theory, dont need this
 
             newData = false;
-		}
-	}
+        }
+    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
-                                            String permissions[], int[] grantResults) {
+                                           String permissions[], int[] grantResults) {
         switch (requestCode) {
             case READ_CONTACTS_REQUEST_CODE: {
                 // If request is cancelled, the result arrays are empty.
@@ -711,17 +718,17 @@ public class ConversationActivity extends AppCompatActivity
         }
     }
 
-	/**
-	 * Method called by the GUI when the send message button is pressed. Hides the contact selection
-	 * box, as a contact has been selected, displays the message to send, and calls the sendText method
-	 * to handle the packetization. Writes the sent message to the database.
-	 *
-	 * Note: do something to show message sent: confirmation check?
-	 *
-	 * @param v The button triggering the send
-	 */
-	public void sendMessage(View v)
-	{
+    /**
+     * Method called by the GUI when the send message button is pressed. Hides the contact selection
+     * box, as a contact has been selected, displays the message to send, and calls the sendText method
+     * to handle the packetization. Writes the sent message to the database.
+     *
+     * Note: do something to show message sent: confirmation check?
+     *
+     * @param v The button triggering the send
+     */
+    public void sendMessage(View v)
+    {
         Editable editable = messageBox.getText();
 
         if(editable == null)
@@ -742,11 +749,11 @@ public class ConversationActivity extends AppCompatActivity
 
         String address = contact.toString();
 
-		if (secretKey != null && !"".equals(number)) { //contact with key selected
+        if (secretKey != null && !"".equals(number)) { //contact with key selected
             performSend(text);
         } else if(secretKey == null && !"".equals(number)) { //contact with no key selected, still awaiting key exchange reply
             Toast.makeText(this, "Waiting for key exchange reply", Toast.LENGTH_SHORT).show();
-		} else { //no contact so no loaded key
+        } else { //no contact so no loaded key
             try {
                 number = formatNumber(address);
             } catch (NumberParseException e) {
@@ -774,7 +781,7 @@ public class ConversationActivity extends AppCompatActivity
                 }
             }
         }
-	}
+    }
 
     private void performSend(String text)
     {
@@ -798,16 +805,16 @@ public class ConversationActivity extends AppCompatActivity
         }
     }
 
-	/**
-	 * Method to allow the external onItemClickListener to update the contact selection box text
-	 * and underlying class variable. Of note, places a space after the selected name, as a marker that
-	 * a name has been selected to the attached onTextChangedListener, which will be called after this change
-	 * is made. The space instructs the listener to return immediately.
-	 */
-	public void updateTo(String name)
-	{
-		to.setText(name + " ");
-	}
+    /**
+     * Method to allow the external onItemClickListener to update the contact selection box text
+     * and underlying class variable. Of note, places a space after the selected name, as a marker that
+     * a name has been selected to the attached onTextChangedListener, which will be called after this change
+     * is made. The space instructs the listener to return immediately.
+     */
+    public void updateTo(String name)
+    {
+        to.setText(name + " ");
+    }
 
     private void showKeyRequestDialog(String name)
     {
