@@ -41,8 +41,6 @@ import com.google.i18n.phonenumbers.NumberParseException;
 import com.google.i18n.phonenumbers.PhoneNumberUtil;
 import com.google.i18n.phonenumbers.Phonenumber;
 
-import org.w3c.dom.Text;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
@@ -173,31 +171,20 @@ public class ConversationActivity extends AppCompatActivity
                             }
 
                             Uri picPath = Uri.withAppendedPath(Contacts.CONTENT_URI, c.getString(k));
-                            Bitmap thumb = BitmapFactory.decodeStream(
-                                    Contacts.openContactPhotoInputStream(getContentResolver(), picPath));
 
-                            try {
+                            Bitmap thumb = BitmapFactory.decodeStream(Contacts.openContactPhotoInputStream(getContentResolver(), picPath));
 
-                                /*String formattedNumber = formatNumber(number);
+                            Phonenumber.PhoneNumber formattedNumber = formatNumber(number);
 
-                                if(formattedNumber == null) {
-                                    suggestions.add(new Contact(name, "Error", thumb, HALF));
-                                    continue;
-                                }*/
+                            if(phoneNumberUtil.isValidNumber(formattedNumber)
+                                    && cryptor.checkSecretKeyExists(phoneNumberUtil.format(formattedNumber, PhoneNumberUtil.PhoneNumberFormat.E164))) {
 
-                                secretKey = cryptor.loadSecretKey(number);
+                                suggestions.add(new Contact(name, formattedNumber, thumb, FULL));
+                            }
+                            else {
+                                suggestions.add(new Contact(name, formattedNumber, thumb, HALF));
+                            }
 
-                                if (secretKey == null) //might have to re-engineer contact to store secret key
-                                    suggestions.add(new Contact(name, number, thumb, HALF));
-                                else
-                                    suggestions.add(new Contact(name, number, thumb, FULL));
-                            } catch (InvalidKeyTypeException e) {
-                                Log.e(TAG, "Unable to load secret key", e);
-                                Toast.makeText(ConversationActivity.this, "Unable to load secret key", Toast.LENGTH_SHORT).show();
-                            } /*catch (NumberParseException e) {
-                                Log.e(TAG, "Error parsing entered phone number", e);
-                                Toast.makeText(ConversationActivity.this, "Error parsing entered phone number", Toast.LENGTH_SHORT).show();
-                            }*/
                         }
                         while (c.moveToNext());
                     }
@@ -243,28 +230,22 @@ public class ConversationActivity extends AppCompatActivity
      * @param number - the string to be formatted
      * @return the formatted input
      */
-    private String formatNumber(String number) throws NumberParseException {
+    private Phonenumber.PhoneNumber formatNumber(String number) {
 
-        Phonenumber.PhoneNumber phNumberProto = null;
-
-        for (String r : phoneNumberUtil.getSupportedRegions()) {
-            // check if it's a possible number
-            if (phoneNumberUtil.isPossibleNumber(number, r)) {
-                phNumberProto = phoneNumberUtil.parse(number, r);
-
-                // check if it's a valid number for the given region
-                if (phoneNumberUtil.isValidNumberForRegion(phNumberProto, r))
-                    return phoneNumberUtil.format(phNumberProto, PhoneNumberUtil.PhoneNumberFormat.E164);
-            }
+        try {
+            return phoneNumberUtil.parse(number, app.getIsoCountryCode());
+        } catch (NumberParseException e) {
+            Phonenumber.PhoneNumber phoneNumber = new Phonenumber.PhoneNumber();
+            phoneNumber.setRawInput(number);
+            return phoneNumber;
         }
-        return null;
     }
 
-        /**
-         * Bookkeeper method for the class
-         *
-         * @return whether an instance has been created
-         */
+    /**
+     * Bookkeeper method for the class
+     *
+     * @return whether an instance has been created
+     */
     public static boolean isCreated()
     {
         return created;
@@ -370,18 +351,16 @@ public class ConversationActivity extends AppCompatActivity
              */
             public void onItemClick(AdapterView<?> parent, View view, int pos, long id) {
                 Contact c = contacts.getItem(pos);
-                String number = c.getNumber();
 
-                if("Error".equals(number)) {
+                if (!phoneNumberUtil.isValidNumber(c.getNumber()))
                     return;
-                }
 
-                //try {
-                    ConversationActivity.number = "+18034043014";
-                    name = c.getName();
-                    updateTo(name);
+                ConversationActivity.number = phoneNumberUtil.format(c.getNumber(), PhoneNumberUtil.PhoneNumberFormat.E164);
+                name = c.getName();
+                updateTo(name);
+                new LoadSecretKeyTask().execute(number);
 
-                    setEncryptionStatus();
+                setEncryptionStatus();
 
                     /*if(ContextCompat.checkSelfPermission(ConversationActivity.this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
                         other = ContactUtils.getBitmap(getContentResolver(), number);
@@ -389,13 +368,9 @@ public class ConversationActivity extends AppCompatActivity
                         other = BitmapFactory.decodeResource(getResources(), R.drawable.ic_account_box_gray_48dp);
                     }*/
 
-                    if (c.getAlpha() == HALF) {
-                        checkPermissionOrShowDialog();
-                    }
-                /*} catch (NumberParseException e) {
-                    Log.e(TAG, "Error parsing entered phone number", e);
-                    Toast.makeText(ConversationActivity.this, "Error parsing entered phone number", Toast.LENGTH_SHORT).show();
-                }*/
+                if (c.getAlpha() == HALF) {
+                    checkPermissionOrShowDialog();
+                }
             }
         });
 
@@ -754,31 +729,30 @@ public class ConversationActivity extends AppCompatActivity
         } else if(secretKey == null && !"".equals(number)) { //contact with no key selected, still awaiting key exchange reply
             Toast.makeText(this, "Waiting for key exchange reply", Toast.LENGTH_SHORT).show();
         } else { //no contact so no loaded key
-            try {
-                number = formatNumber(address);
-            } catch (NumberParseException e) {
-                Log.e(TAG, "Error parsing entered phone number", e);
+            Phonenumber.PhoneNumber temp = formatNumber(address);
+            if(phoneNumberUtil.isValidNumber(temp)) {
+                number = phoneNumberUtil.format(temp, PhoneNumberUtil.PhoneNumberFormat.E164);
+            } else {
+                Log.e(TAG, "Error parsing entered phone number");
                 Toast.makeText(ConversationActivity.this, "Error parsing entered phone number", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            if(number != null) {
-                //we have a number, so try loading a key
-                try {
-                    secretKey = cryptor.loadSecretKey(number);
-                    setEncryptionStatus();
-                } catch (InvalidKeyTypeException e) {
-                    Log.e(TAG, "Error loading key for " + address, e);
-                    Toast.makeText(ConversationActivity.this, "Error loading key for " + address, Toast.LENGTH_SHORT).show();
-                    return;
-                }
+            //we have a number, so try loading a key
+            try {
+                secretKey = cryptor.loadSecretKey(number);
+                setEncryptionStatus();
+            } catch (InvalidKeyTypeException e) {
+                Log.e(TAG, "Error loading key for " + address, e);
+                Toast.makeText(ConversationActivity.this, "Error loading key for " + address, Toast.LENGTH_SHORT).show();
+                return;
+            }
 
-                name = address;
-                if(secretKey != null) { //we have number and key
-                    performSend(text);
-                } else {
-                    checkPermissionOrShowDialog();
-                }
+            name = address;
+            if(secretKey != null) { //we have number and key
+                performSend(text);
+            } else {
+                checkPermissionOrShowDialog();
             }
         }
     }

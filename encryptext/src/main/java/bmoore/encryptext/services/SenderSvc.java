@@ -369,9 +369,17 @@ public class SenderSvc extends Service {
         }
 
         @Override
-        public void handleMessage(Message msg) {
-            SenderSvc svc = reference.get();
-            svc.handleJob(msg.getData());
+        public void handleMessage(final Message msg) {
+
+            Runnable r = new Runnable() {
+                @Override
+                public void run() {
+                    SenderSvc svc = reference.get();
+                    svc.handleJob(msg.getData());
+                }
+            };
+
+            post(r);
         }
     }
 }

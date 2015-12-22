@@ -2,10 +2,12 @@ package bmoore.encryptext.model;
 
 import android.graphics.Bitmap;
 
+import com.google.i18n.phonenumbers.Phonenumber;
+
 public class Contact
 {
     private String name;
-    private String number;
+    private Phonenumber.PhoneNumber number;
     private Bitmap thumb;
     private int alpha;
 
@@ -18,10 +20,10 @@ public class Contact
     public Contact()
     {
         name = "";
-        number = "";
+        number = null;
     }
 
-    public Contact(String name, String number, Bitmap thumb, int alpha)
+    public Contact(String name, Phonenumber.PhoneNumber number, Bitmap thumb, int alpha)
     {
         this.name = name;
         this.number = number;
@@ -44,18 +46,18 @@ public class Contact
         return this.name;
     }
 
-    public String getNumber()
+    public Phonenumber.PhoneNumber getNumber()
     {
         return this.number;
     }
 
-    public void setName(String paramString)
+    public void setName(String name)
     {
-        this.name = paramString;
+        this.name = name;
     }
 
-    public void setNumber(String paramString)
+    public void setNumber(Phonenumber.PhoneNumber phoneNumber)
     {
-        this.number = paramString;
+        this.number = phoneNumber;
     }
 }

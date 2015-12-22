@@ -8,8 +8,13 @@ import android.widget.ArrayAdapter;
 import android.widget.Filter;
 import android.widget.ImageView;
 import android.widget.TextView;
+
+import com.google.i18n.phonenumbers.PhoneNumberUtil;
+import com.google.i18n.phonenumbers.Phonenumber;
+
 import java.util.ArrayList;
 
+import bmoore.encryptext.EncrypText;
 import bmoore.encryptext.R;
 
 public class ContactAdapter extends ArrayAdapter<Contact>
@@ -17,6 +22,7 @@ public class ContactAdapter extends ArrayAdapter<Contact>
 	Context context;
 	ArrayList<Contact> data = null;
 	int layoutResourceId;
+    PhoneNumberUtil phoneNumberUtil;
 	Filter nameFilter = new Filter()
 	{
 		public String convertResultToString(Object paramAnonymousObject)
@@ -44,6 +50,7 @@ public class ContactAdapter extends ArrayAdapter<Contact>
 		this.layoutResourceId = paramInt;
 		this.context = paramContext;
 		this.data = paramArrayList;
+        this.phoneNumberUtil = PhoneNumberUtil.getInstance();
 	}
 
 	public Filter getFilter()
@@ -63,11 +70,21 @@ public class ContactAdapter extends ArrayAdapter<Contact>
 		TextView number = (TextView)row.findViewById(R.id.Address);
         ImageView thumb = (ImageView)row.findViewById(R.id.Thumb);
         ImageView key = (ImageView) row.findViewById(R.id.Key);
-		
-		name.setText(data.get(pos).getName());
-		number.setText(data.get(pos).getNumber());
-        thumb.setImageBitmap(data.get(pos).getThumb());
-        key.setImageAlpha(data.get(pos).getAlpha());
+
+        Contact c = data.get(pos);
+
+		name.setText(c.getName());
+
+        Phonenumber.PhoneNumber phoneNumber = c.getNumber();
+
+        if(phoneNumberUtil.isValidNumber(phoneNumber)) {
+            number.setText(phoneNumberUtil.format(phoneNumber, PhoneNumberUtil.PhoneNumberFormat.NATIONAL));
+        } else {
+            number.setText(phoneNumber.getRawInput() + " " + EncrypText.UNRECOGNIZED_NUMBER_FORMAT);
+        }
+
+        thumb.setImageBitmap(c.getThumb());
+        key.setImageAlpha(c.getAlpha());
 		return row;
 	}
 }

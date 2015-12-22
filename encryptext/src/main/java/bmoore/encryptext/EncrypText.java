@@ -72,6 +72,8 @@ public class EncrypText extends Application
     public static final int PUBLIC_KEY_PDU = 1;
     public static final int AES_ENCRYPTED_PDU = 2;
 
+    public static final String UNRECOGNIZED_NUMBER_FORMAT = "Unrecognized number format";
+
     private static final String TAG = "EncrypText";
 
 

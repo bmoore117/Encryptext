@@ -276,4 +276,8 @@ public class Cryptor
         inNegotiation.remove(address);
         dbUtils.deleteKey(address, KeyTypes.PUBLIC);
     }
+
+    public boolean checkSecretKeyExists(String number) {
+        return dbUtils.checkKeyExists(number, KeyTypes.SECRET);
+    }
 }
