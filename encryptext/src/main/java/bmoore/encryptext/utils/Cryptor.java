@@ -30,8 +30,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-public class Cryptor
-{
+public class Cryptor {
     public enum KeyTypes {
         SECRET,
         PRIVATE,
@@ -54,8 +53,7 @@ public class Cryptor
     private HashMap<SecretKey, byte[]> lastReceivedCipher;
     private HashMap<SecretKey, byte[]> lastSentCipher;
 
-    public Cryptor(DBUtils utils) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeySpecException
-    {
+    public Cryptor(DBUtils utils) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeySpecException {
         dbUtils = utils;
         lastReceivedCipher = new HashMap<>();
         lastSentCipher = new HashMap<>();
@@ -72,15 +70,13 @@ public class Cryptor
 
         HashMap<String, byte[]> keyBlobs = dbUtils.loadKeysInNegotiation();
 
-        for(Map.Entry<String, byte[]> entry : keyBlobs.entrySet())
-        {
+        for (Map.Entry<String, byte[]> entry : keyBlobs.entrySet()) {
             X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(entry.getValue());
             inNegotiation.put(entry.getKey(), keyFactory.generatePublic(publicKeySpec));
         }
     }
 
-    public SecretKey createAndStoreSecretKey(String address) throws InvalidKeyTypeException, InvalidKeyException
-    {
+    public SecretKey createAndStoreSecretKey(String address) throws InvalidKeyTypeException, InvalidKeyException {
         PublicKey k = inNegotiation.get(address);
         inNegotiation.remove(address);
 
@@ -99,20 +95,18 @@ public class Cryptor
     public void storeLastEncryptedBlock(SecretKey key, String address) {
         byte[] lastReceived = lastReceivedCipher.get(key);
 
-        if(lastReceived != null) {
+        if (lastReceived != null) {
             dbUtils.storeEncryptedBlock(address, lastReceived);
         }
     }
 
-    public PublicKey getMyPublicKey()
-    {
+    public PublicKey getMyPublicKey() {
         return pair.getPublic();
     }
 
-    public void initPublicCrypto() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyTypeException, InvalidKeySpecException
-    {
+    public void initPublicCrypto() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyTypeException, InvalidKeySpecException {
         loadMyKeys();
-        if(pair == null)
+        if (pair == null)
             return;
 
         ECGenParameterSpec ecParamSpec = new ECGenParameterSpec("secp384r1");
@@ -124,17 +118,16 @@ public class Cryptor
         storeMyKeys(pair);
     }
 
-    public boolean checkAndHold(byte[] key, String address) throws NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyTypeException
-    {
+    public boolean checkAndHold(byte[] key, String address) throws NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyTypeException {
         X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(key);
         PublicKey k = keyFactory.generatePublic(publicKeySpec);
 
-        if(loadPublicKey(address) != null) //should not find our public key in the private entry it's stored in
+        if (loadPublicKey(address) != null) //should not find our public key in the private entry it's stored in
             return false;                   //thus self-texting should be fine and renegotiations won't happen
 
         storePublicKey(k, address);
 
-        if(loadPublicKey(address) == null)
+        if (loadPublicKey(address) == null)
             Log.i(TAG, "Key not stored");
 
         inNegotiation.put(address, k);
@@ -142,11 +135,10 @@ public class Cryptor
         return true;
     }
 
-    PrivateKey loadPrivateKey(String address) throws InvalidKeyTypeException, NoSuchAlgorithmException, InvalidKeySpecException
-    {
+    PrivateKey loadPrivateKey(String address) throws InvalidKeyTypeException, NoSuchAlgorithmException, InvalidKeySpecException {
         byte[] keyBytes = dbUtils.loadKeyBytes(address, KeyTypes.PRIVATE);
 
-        if(keyBytes == null)
+        if (keyBytes == null)
             return null;
         else {
             //for private keys use PKCS8EncodedKeySpec; for public keys use X509EncodedKeySpec
@@ -155,11 +147,10 @@ public class Cryptor
         }
     }
 
-    PublicKey loadPublicKey(String address) throws InvalidKeyTypeException, NoSuchAlgorithmException, InvalidKeySpecException
-    {
+    PublicKey loadPublicKey(String address) throws InvalidKeyTypeException, NoSuchAlgorithmException, InvalidKeySpecException {
         byte[] keyBytes = dbUtils.loadKeyBytes(address, KeyTypes.PUBLIC);
 
-        if(keyBytes == null)
+        if (keyBytes == null)
             return null;
         else {
             X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(keyBytes);
@@ -167,45 +158,38 @@ public class Cryptor
         }
     }
 
-    public SecretKey loadSecretKey(String address) throws InvalidKeyTypeException
-    {
+    public SecretKey loadSecretKey(String address) throws InvalidKeyTypeException {
         byte[] keyBytes = dbUtils.loadKeyBytes(address, KeyTypes.SECRET);
 
-        if(keyBytes == null)
+        if (keyBytes == null)
             return null;
         else
             return new SecretKeySpec(keyBytes, "AES");
     }
 
-    private void loadMyKeys() throws InvalidKeyTypeException, NoSuchAlgorithmException, InvalidKeySpecException
-    {
+    private void loadMyKeys() throws InvalidKeyTypeException, NoSuchAlgorithmException, InvalidKeySpecException {
         PrivateKey priv = loadPrivateKey("Me");
         PublicKey pub = loadPublicKey("Me");
 
         pair = new KeyPair(pub, priv);
     }
 
-    void storeMyKeys(KeyPair pair) throws InvalidKeyTypeException
-    {
+    void storeMyKeys(KeyPair pair) throws InvalidKeyTypeException {
         dbUtils.storeKeyBytes("Me", pair.getPrivate().getEncoded(), KeyTypes.PRIVATE);
         dbUtils.storeKeyBytes("Me", pair.getPublic().getEncoded(), KeyTypes.PUBLIC);
     }
 
-    void storeSecretKey(SecretKey key, String address) throws InvalidKeyTypeException
-    {
+    void storeSecretKey(SecretKey key, String address) throws InvalidKeyTypeException {
         dbUtils.storeKeyBytes(address, key.getEncoded(), KeyTypes.SECRET);
     }
 
-    void storePublicKey(PublicKey key, String address) throws InvalidKeyTypeException
-    {
+    void storePublicKey(PublicKey key, String address) throws InvalidKeyTypeException {
         dbUtils.storeKeyBytes(address, key.getEncoded(), KeyTypes.PUBLIC);
     }
 
     public byte[] encryptMessage(byte[] message, SecretKey key, int sendIV) throws InvalidKeyException, BadPaddingException,
-            IllegalBlockSizeException, InvalidAlgorithmParameterException
-    {
-        if(sendIV == 0)
-        {
+            IllegalBlockSizeException, InvalidAlgorithmParameterException {
+        if (sendIV == 0) {
             aes.init(Cipher.ENCRYPT_MODE, key, source);
             byte[] encryptedMessage = aes.doFinal(message);
 
@@ -219,9 +203,7 @@ public class Cryptor
             System.arraycopy(encryptedMessage, 0, ivAndMessage, IV.length, encryptedMessage.length);
 
             return ivAndMessage;
-        }
-        else
-        {
+        } else {
             AlgorithmParameterSpec ivSpec = new IvParameterSpec(lastSentCipher.get(key));
             aes.init(Cipher.ENCRYPT_MODE, key, ivSpec);
 
@@ -236,13 +218,11 @@ public class Cryptor
     }
 
     public byte[] decryptMessage(byte[] cipherTextPacket, SecretKey key, int containsIV, String address) throws InvalidKeyException, BadPaddingException,
-            IllegalBlockSizeException, InvalidAlgorithmParameterException
-    {
+            IllegalBlockSizeException, InvalidAlgorithmParameterException {
 
         byte[] plaintext;
 
-        if(containsIV == 0)
-        {
+        if (containsIV == 0) {
             byte[] IV = new byte[16];
             System.arraycopy(cipherTextPacket, 0, IV, 0, 16);
 
@@ -253,10 +233,8 @@ public class Cryptor
             aes.init(Cipher.DECRYPT_MODE, key, ivSpec);
 
             plaintext = aes.doFinal(cipherText);
-        }
-        else
-        {
-            if(lastReceivedCipher.get(key) == null) {
+        } else {
+            if (lastReceivedCipher.get(key) == null) {
                 lastReceivedCipher.put(key, dbUtils.loadEncryptedBlock(address));
             }
 

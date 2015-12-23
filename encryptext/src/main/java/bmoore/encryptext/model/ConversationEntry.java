@@ -4,134 +4,117 @@ import android.graphics.Bitmap;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-public class ConversationEntry implements Parcelable
-{
-	public static final Creator<ConversationEntry> CREATOR = new Creator<ConversationEntry>()
-	{
-		public ConversationEntry createFromParcel(Parcel paramAnonymousParcel)
-		{
-			return new ConversationEntry(paramAnonymousParcel);
-		}
+public class ConversationEntry implements Parcelable {
+    public static final Creator<ConversationEntry> CREATOR = new Creator<ConversationEntry>() {
+        public ConversationEntry createFromParcel(Parcel paramAnonymousParcel) {
+            return new ConversationEntry(paramAnonymousParcel);
+        }
 
-		public ConversationEntry[] newArray(int paramAnonymousInt)
-		{
-			return new ConversationEntry[paramAnonymousInt];
-		}
-	};
+        public ConversationEntry[] newArray(int paramAnonymousInt) {
+            return new ConversationEntry[paramAnonymousInt];
+        }
+    };
 
     private long messageId;
-	private String message;
+    private String message;
     private String number;
-	private String name;
+    private String name;
     private String date;
     private Integer imageResourceId;
-	private Bitmap photo;
+    private Bitmap photo;
 
 
-	public ConversationEntry()
-	{
-		this(-1, null, null, null, null, null);
-	}
+    public ConversationEntry() {
+        this(-1, null, null, null, null, null);
+    }
 
-	public ConversationEntry(Parcel p)
-	{
+    public ConversationEntry(Parcel p) {
         this.messageId = p.readLong();
-		this.message = p.readString();
-		this.number = p.readString();
-		this.name = p.readString();
-		this.date = p.readString();
+        this.message = p.readString();
+        this.number = p.readString();
+        this.name = p.readString();
+        this.date = p.readString();
         this.imageResourceId = p.readInt();
 
-        if(imageResourceId == Integer.MIN_VALUE) {
+        if (imageResourceId == Integer.MIN_VALUE) {
             imageResourceId = null;
         }
 
-		this.photo = p.readParcelable(Bitmap.class.getClassLoader());
-	}
+        this.photo = p.readParcelable(Bitmap.class.getClassLoader());
+    }
 
-	/**
-	 * For reading from file
-	 * @param message
-	 * @param name
-	 * @param date
-	 * @param pic
-	 */
-	public ConversationEntry(long messageId, String message, String name, String date, Bitmap pic)
-	{
-		this(messageId, message, null, name, date, pic);
-	}
+    /**
+     * For reading from file
+     *
+     * @param message
+     * @param name
+     * @param date
+     * @param pic
+     */
+    public ConversationEntry(long messageId, String message, String name, String date, Bitmap pic) {
+        this(messageId, message, null, name, date, pic);
+    }
 
-    public ConversationEntry(String message, String number, String name, String date, Bitmap pic)
-    {
+    public ConversationEntry(String message, String number, String name, String date, Bitmap pic) {
         this(-1, message, number, name, date, pic);
     }
-	
-	/**
-	 * When created otherwise
-	 * @param message
-	 * @param number
-	 * @param name
-	 * @param date
-	 * @param pic
-	 */
-	public ConversationEntry(long messageId, String message, String number, String name, String date, Bitmap pic)
-	{
-		this.message = message;
-		this.name = name;
-		this.number = number;
-		this.photo = pic;
-		this.date = date;
-	}
 
-	public int describeContents()
-	{
-		return 0;
-	}
+    /**
+     * When created otherwise
+     *
+     * @param message
+     * @param number
+     * @param name
+     * @param date
+     * @param pic
+     */
+    public ConversationEntry(long messageId, String message, String number, String name, String date, Bitmap pic) {
+        this.message = message;
+        this.name = name;
+        this.number = number;
+        this.photo = pic;
+        this.date = date;
+    }
 
-	public String getNumber()
-	{
-		return this.number;
-	}
+    public int describeContents() {
+        return 0;
+    }
 
-	public String getMessage()
-	{
-		return this.message;
-	}
+    public String getNumber() {
+        return this.number;
+    }
 
-	public String getName()
-	{
-		return this.name;
-	}
+    public String getMessage() {
+        return this.message;
+    }
 
-	public Bitmap getPhoto()
-	{
-		return this.photo;
-	}
-	
-	public String getDate()
-	{
-		return date;
-	}
-	
-	public void setDate(String date)
-	{
-		this.date = date;
-	}
+    public String getName() {
+        return this.name;
+    }
 
-	public void setAddress(String paramString)
-	{
-		this.number = paramString;
-	}
+    public Bitmap getPhoto() {
+        return this.photo;
+    }
 
-	public void setName(String paramString)
-	{
-		this.name = paramString;
-	}
+    public String getDate() {
+        return date;
+    }
 
-	public void setPhoto(Bitmap paramBitmap)
-	{
-		this.photo = paramBitmap;
-	}
+    public void setDate(String date) {
+        this.date = date;
+    }
+
+    public void setAddress(String paramString) {
+        this.number = paramString;
+    }
+
+    public void setName(String paramString) {
+        this.name = paramString;
+    }
+
+    public void setPhoto(Bitmap paramBitmap) {
+        this.photo = paramBitmap;
+    }
 
     public long getMessageId() {
         return messageId;
@@ -149,14 +132,13 @@ public class ConversationEntry implements Parcelable
         return imageResourceId;
     }
 
-	public void writeToParcel(Parcel p, int paramInt)
-	{
+    public void writeToParcel(Parcel p, int paramInt) {
         p.writeLong(messageId);
-		p.writeString(message);
-		p.writeString(number);
-		p.writeString(name);
-		p.writeString(date);
+        p.writeString(message);
+        p.writeString(number);
+        p.writeString(name);
+        p.writeString(date);
         p.writeInt(imageResourceId == null ? Integer.MIN_VALUE : imageResourceId);
-		p.writeParcelable(photo, 0);
-	}
+        p.writeParcelable(photo, 0);
+    }
 }

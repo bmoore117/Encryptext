@@ -2,26 +2,22 @@ package bmoore.encryptext.utils;
 
 import java.security.PublicKey;
 import java.security.cert.Certificate;
-import java.security.cert.X509Certificate;
 
 
 /**
  * Basically, a fancy wrapper class to a public key. Created because Java is a butt about how it
  * handles public/private keys in a keystore
  */
-public class EncrypCert extends Certificate
-{
+public class EncrypCert extends Certificate {
     private PublicKey pub;
     private String name;
     private String address;
 
-    public EncrypCert()
-    {
+    public EncrypCert() {
         super("EncrypCert");
     }
 
-    public EncrypCert(PublicKey pub, String name, String address)
-    {
+    public EncrypCert(PublicKey pub, String name, String address) {
         super("EncrypCert");
 
         this.pub = pub;
@@ -30,37 +26,29 @@ public class EncrypCert extends Certificate
     }
 
     @Override
-    public byte[] getEncoded()
-    {
+    public byte[] getEncoded() {
         return pub.getEncoded();
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         return name + ": (" + address + "), key of: " + new String(pub.getEncoded());
     }
 
     @Override
-    public void verify(PublicKey pub, String sigProvider)
-    {
+    public void verify(PublicKey pub, String sigProvider) {
 
     }
 
     @Override
-    public void verify(PublicKey pub)
-    {
+    public void verify(PublicKey pub) {
 
     }
 
     @Override
-    public PublicKey getPublicKey()
-    {
+    public PublicKey getPublicKey() {
         return pub;
     }
-
-
-
 
 
 }

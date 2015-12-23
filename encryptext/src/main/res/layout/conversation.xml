@@ -13,42 +13,51 @@
         android:elevation="4dp"
         android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
         app:popupTheme="@style/ThemeOverlay.AppCompat.Light"/>
-  
-    <AutoCompleteTextView android:id="@+id/phone" android:layout_width="wrap_content" 
-        android:layout_height="wrap_content" android:hint="@string/To" 
-        android:ems="10" android:completionThreshold="1"
-                          android:layout_below="@+id/conversation_toolbar"
-                          android:layout_alignParentStart="true"
-                          android:layout_alignParentEnd="true"/>
-    
-    <Button android:id="@+id/Send" android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:text="@string/Send"
-            android:layout_alignParentRight="true"
-            android:layout_alignParentBottom="true"
-            android:onClick="@string/Send_Message" />
 
-    <ListView android:id="@+id/conversation_list"
-              android:visibility="visible"
-              android:layout_width="fill_parent"
-              android:layout_height="wrap_content"
-              android:stackFromBottom="true"
-              android:transcriptMode="alwaysScroll"
-              android:layout_above="@+id/Send"
-              android:layout_centerHorizontal="true"
-              android:layout_alignParentEnd="true"
-              android:layout_below="@+id/conversation_encryption_status"/>
+    <AutoCompleteTextView
+        android:id="@+id/phone"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:hint="@string/To"
+        android:ems="10"
+        android:completionThreshold="1"
+        android:layout_below="@+id/conversation_toolbar"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"/>
 
-    <EditText android:id="@+id/message"
-              android:nextFocusLeft="@+id/phone"
-              android:nextFocusUp="@+id/phone"
-              android:layout_width="wrap_content"
-              android:layout_height="wrap_content"
-              android:hint="@string/Type_Message"
-              android:ems="10"
-              android:layout_toLeftOf="@+id/Send"
-              android:layout_alignParentLeft="true"
-              android:layout_alignParentBottom="true"
-              android:inputType="textCapSentences|textAutoCorrect" />
+    <Button
+        android:id="@+id/Send"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/Send"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentBottom="true"
+        android:onClick="@string/Send_Message"/>
+
+    <ListView
+        android:id="@+id/conversation_list"
+        android:visibility="visible"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:stackFromBottom="true"
+        android:transcriptMode="alwaysScroll"
+        android:layout_above="@+id/Send"
+        android:layout_centerHorizontal="true"
+        android:layout_alignParentEnd="true"
+        android:layout_below="@+id/conversation_encryption_status"/>
+
+    <EditText
+        android:id="@+id/message"
+        android:nextFocusLeft="@+id/phone"
+        android:nextFocusUp="@+id/phone"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:hint="@string/Type_Message"
+        android:ems="10"
+        android:layout_toLeftOf="@+id/Send"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentBottom="true"
+        android:inputType="textCapSentences|textAutoCorrect"/>
 
     <TextView
         android:layout_width="wrap_content"

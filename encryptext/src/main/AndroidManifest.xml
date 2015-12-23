@@ -1,61 +1,80 @@
 <!--suppress AndroidLintUnusedResources -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="bmoore.encryptext">
+          package="bmoore.encryptext">
 
-    <permission android:name="com.encryptext.CALL_SERVICE" />
+    <permission android:name="com.encryptext.CALL_SERVICE"/>
+
     <uses-permission android:name="com.encryptext.CALL_SERVICE"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_INTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <uses-permission android:name="android.permission.SEND_SMS" />
-    <uses-permission android:name="android.permission.RECEIVE_SMS" />
-    <uses-permission android:name="android.permission.READ_CONTACTS" />
-    <uses-permission android:name="android.permission.READ_PROFILE" />
-    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_INTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
+    <uses-permission android:name="android.permission.SEND_SMS"/>
+    <uses-permission android:name="android.permission.RECEIVE_SMS"/>
+    <uses-permission android:name="android.permission.READ_CONTACTS"/>
+    <uses-permission android:name="android.permission.READ_PROFILE"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
 
-    <application android:name="bmoore.encryptext.EncrypText" android:icon="@mipmap/ic_stat_notification" android:label="@string/app_name" android:theme="@style/AppTheme">
+    <application
+        android:name="bmoore.encryptext.EncrypText"
+        android:icon="@mipmap/ic_stat_notification"
+        android:label="@string/app_name"
+        android:theme="@style/AppTheme">
 
-        <activity android:name=".ui.HomeActivity" android:label="@string/title_home_screen">
+        <activity
+            android:name=".ui.HomeActivity"
+            android:label="@string/title_home_screen">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
 
-        <activity android:name=".ui.ConversationActivity" android:label="@string/title_conversation_view"
-            android:parentActivityName=".ui.HomeActivity" android:launchMode="singleTop">
+        <activity
+            android:name=".ui.ConversationActivity"
+            android:label="@string/title_conversation_view"
+            android:parentActivityName=".ui.HomeActivity"
+            android:launchMode="singleTop">
 
         </activity>
 
-        <activity android:name=".ui.KeyRequestsActivity" android:label="@string/title_key_exchange_requests"
+        <activity
+            android:name=".ui.KeyRequestsActivity"
+            android:label="@string/title_key_exchange_requests"
             android:parentActivityName=".ui.HomeActivity">
 
         </activity>
 
-        <service android:name=".services.ReceiverSvc" android:exported="false"
+        <service
+            android:name=".services.ReceiverSvc"
+            android:exported="false"
             android:permission="bmoore.example.encryptext.CALL_SERVICE">
             <intent-filter>
-                <action android:name="com.encryptext.ReceiverSvc" />
+                <action android:name="com.encryptext.ReceiverSvc"/>
             </intent-filter>
         </service>
 
-        <service android:name=".services.SenderSvc" android:exported="false"
+        <service
+            android:name=".services.SenderSvc"
+            android:exported="false"
             android:permission="bmoore.example.encryptext.CALL_SERVICE">
             <intent-filter>
-                <action android:name="com.encryptext.SenderSvc" />
+                <action android:name="com.encryptext.SenderSvc"/>
             </intent-filter>
         </service>
 
         <receiver android:name=".receivers.Receiver">
             <intent-filter>
-                <action android:name="android.intent.action.DATA_SMS_RECEIVED" />
-                <data android:host="localhost" android:scheme="sms" android:port="17117" />
+                <action android:name="android.intent.action.DATA_SMS_RECEIVED"/>
+                <data
+                    android:host="localhost"
+                    android:scheme="sms"
+                    android:port="17117"/>
             </intent-filter>
         </receiver>
 
         <receiver android:name=".receivers.SendingStatus">
             <intent-filter>
-                <action android:name="com.encryptext.PDU_SENT" />
+                <action android:name="com.encryptext.PDU_SENT"/>
             </intent-filter>
         </receiver>
 

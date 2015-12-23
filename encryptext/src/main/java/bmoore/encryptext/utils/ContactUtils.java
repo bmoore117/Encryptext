@@ -21,25 +21,22 @@ public class ContactUtils {
      *
      * @param number - the phone number to retrieve a picture for
      */
-    public static Bitmap getBitmap(ContentResolver contentResolver, String number)
-    {
+    public static Bitmap getBitmap(ContentResolver contentResolver, String number) {
         Uri path;
         long ID;
         Cursor c;
-        if (number == null)
-        {
+        if (number == null) {
             path = ContactsContract.Profile.CONTENT_URI;
 
-            if(path == null) //do nothing if we couldn't access system services
+            if (path == null) //do nothing if we couldn't access system services
             {
                 Log.v(TAG, "Could not read Profile.CONTENT_URI");
                 return null;
             }
 
-            c = contentResolver.query(path, new String[] { ContactsContract.Profile._ID }, null, null, null);
+            c = contentResolver.query(path, new String[]{ContactsContract.Profile._ID}, null, null, null);
 
-            if(c == null)
-            {
+            if (c == null) {
                 Log.v(TAG, "Content resolver returned no results for personal contact card query");
                 return null;
             }
@@ -72,30 +69,25 @@ public class ContactUtils {
                 return BitmapFactory.decodeStream(ContactsContract.Contacts.openContactPhotoInputStream(
                         contentResolver, path));
             }
-        }
-        else
-        {
+        } else {
             Uri temp = ContactsContract.PhoneLookup.CONTENT_FILTER_URI;
 
-            if(temp == null)
-            {
+            if (temp == null) {
                 Log.v(TAG, "Could not read PhoneLookup.CONTENT_FILTER_URI");
                 return null;
             }
 
             path = Uri.withAppendedPath(temp, Uri.encode(number));
 
-            if(path == null)
-            {
+            if (path == null) {
                 Log.v(TAG, "Could not construct Uri from PhoneLookup.CONTENT_FILTER_URI and " +
                         "phone number provided");
                 return null;
             }
 
-            c = contentResolver.query(path, new String[] { ContactsContract.Contacts._ID }, null, null, null);
+            c = contentResolver.query(path, new String[]{ContactsContract.Contacts._ID}, null, null, null);
 
-            if(c == null)
-            {
+            if (c == null) {
                 Log.v(TAG, "Content resolver returned no results for target contact card query");
                 return null;
             }
@@ -130,30 +122,26 @@ public class ContactUtils {
         return null;
     }
 
-    public static String getContactName(ContentResolver contentResolver, String address)
-    {
+    public static String getContactName(ContentResolver contentResolver, String address) {
         Uri temp = ContactsContract.CommonDataKinds.Phone.CONTENT_FILTER_URI;
 
-        if(temp == null)
-        {
+        if (temp == null) {
             Log.v(TAG, "Could not read ContactsContract.CommonDataKinds.Phone.CONTENT_FILTER_URI");
             return null;
         }
 
         Uri path = Uri.withAppendedPath(temp, address);
 
-        if(path == null)
-        {
+        if (path == null) {
             Log.v(TAG, "Construction of path to contact failed with given base and address");
             return null;
         }
 
         Log.i(TAG, "Obtaining name");
-        String[] projection = {ContactsContract.Contacts.DISPLAY_NAME };
+        String[] projection = {ContactsContract.Contacts.DISPLAY_NAME};
         Cursor cr = contentResolver.query(path, projection, null, null, null);
 
-        if(cr == null)
-        {
+        if (cr == null) {
             Log.v(TAG, "Content resolver returned no results for personal contact name query");
             return null;
         }

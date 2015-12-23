@@ -7,15 +7,12 @@ import android.os.Parcelable;
 
 public class KeyRequest implements Parcelable {
 
-    public static final Creator<KeyRequest> CREATOR = new Creator<KeyRequest>()
-    {
-        public KeyRequest createFromParcel(Parcel paramAnonymousParcel)
-        {
+    public static final Creator<KeyRequest> CREATOR = new Creator<KeyRequest>() {
+        public KeyRequest createFromParcel(Parcel paramAnonymousParcel) {
             return new KeyRequest(paramAnonymousParcel);
         }
 
-        public KeyRequest[] newArray(int paramAnonymousInt)
-        {
+        public KeyRequest[] newArray(int paramAnonymousInt) {
             return new KeyRequest[paramAnonymousInt];
         }
     };
@@ -26,13 +23,11 @@ public class KeyRequest implements Parcelable {
     private String date;
     private Bitmap contactThumb;
 
-    public KeyRequest(String name, String status, String date, Bitmap contactThumb)
-    {
+    public KeyRequest(String name, String status, String date, Bitmap contactThumb) {
         this(name, null, status, date, contactThumb);
     }
 
-    public KeyRequest(String name, String number, String status, String date, Bitmap contactThumb)
-    {
+    public KeyRequest(String name, String number, String status, String date, Bitmap contactThumb) {
         this.name = name;
         this.number = number;
         this.status = status;
@@ -40,8 +35,7 @@ public class KeyRequest implements Parcelable {
         this.contactThumb = contactThumb;
     }
 
-    public KeyRequest(Parcel p)
-    {
+    public KeyRequest(Parcel p) {
         this.name = p.readString();
         this.number = p.readString();
         this.status = p.readString();
@@ -90,8 +84,7 @@ public class KeyRequest implements Parcelable {
     }
 
 
-    public void writeToParcel(Parcel p, int paramInt)
-    {
+    public void writeToParcel(Parcel p, int paramInt) {
         p.writeString(name);
         p.writeString(number);
         p.writeString(status);
@@ -100,5 +93,7 @@ public class KeyRequest implements Parcelable {
     }
 
     @Override
-    public int describeContents() { return  0; }
+    public int describeContents() {
+        return 0;
+    }
 }

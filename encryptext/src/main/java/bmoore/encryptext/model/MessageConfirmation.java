@@ -24,8 +24,7 @@ public class MessageConfirmation {
     private int messageParts;
     private long messageId;
 
-    public MessageConfirmation(int messageParts, long messageId)
-    {
+    public MessageConfirmation(int messageParts, long messageId) {
         this.messageId = messageId;
         this.messageParts = messageParts;
     }

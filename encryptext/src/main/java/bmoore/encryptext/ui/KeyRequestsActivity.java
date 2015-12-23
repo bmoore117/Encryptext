@@ -1,7 +1,6 @@
 package bmoore.encryptext.ui;
 
 import android.app.AlertDialog;
-import android.app.ListActivity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -44,22 +43,19 @@ public class KeyRequestsActivity extends AppCompatActivity {
 
     private ServiceConnection senderConnection = new ServiceConnection() {
         @Override
-        public void onServiceConnected(ComponentName className, IBinder service)
-        {
-            senderSvc = ((SenderSvc.SenderBinder)service).getService();
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            senderSvc = ((SenderSvc.SenderBinder) service).getService();
         }
 
         @Override
-        public void onServiceDisconnected(ComponentName className)
-        {
+        public void onServiceDisconnected(ComponentName className) {
             senderSvc = null;
         }
     };
 
 
     @Override
-    public void onCreate(Bundle savedInstanceState)
-    {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.key_exhange_requests);
 
@@ -84,7 +80,7 @@ public class KeyRequestsActivity extends AppCompatActivity {
             public void onItemClick(final AdapterView<?> parent, View view, final int position, long id) {
                 final KeyRequest item = (KeyRequest) parent.getAdapter().getItem(position);
 
-                if(item.getNumber() == null)
+                if (item.getNumber() == null)
                     return;
 
                 AlertDialog.Builder builder = new AlertDialog.Builder(KeyRequestsActivity.this);
@@ -122,19 +118,16 @@ public class KeyRequestsActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onDestroy()
-    {
+    public void onDestroy() {
         unbindService(senderConnection);
         super.onDestroy();
     }
 
     @Override
-    public void onStart()
-    {
+    public void onStart() {
         super.onStart();
 
-        if(senderSvc == null)
-        {
+        if (senderSvc == null) {
             Intent intent = new Intent(this, SenderSvc.class);
             bindService(intent, senderConnection, Context.BIND_AUTO_CREATE);
         }
@@ -151,7 +144,7 @@ public class KeyRequestsActivity extends AppCompatActivity {
         protected void onPostExecute(List<KeyRequest> requests) {
             adapter.addAll(requests);
 
-            if(adapter.getCount() == 0)
+            if (adapter.getCount() == 0)
                 adapter.add(new KeyRequest("No keys exchanged. Start a conversation from the home screen", null, null, null));
         }
     }

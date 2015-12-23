@@ -1,15 +1,5 @@
 package bmoore.encryptext;
 
-import java.io.IOException;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
-import java.security.spec.InvalidKeySpecException;
-import java.util.GregorianCalendar;
-import java.util.Date;
-import java.util.Locale;
-
 import android.app.Application;
 import android.content.Context;
 import android.telephony.TelephonyManager;
@@ -18,37 +8,37 @@ import android.widget.Toast;
 
 import com.google.i18n.phonenumbers.PhoneNumberUtil;
 
+import java.security.InvalidAlgorithmParameterException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
+
 import javax.crypto.NoSuchPaddingException;
 
 import bmoore.encryptext.utils.Cryptor;
 import bmoore.encryptext.utils.DBUtils;
-import bmoore.encryptext.utils.Files;
 import bmoore.encryptext.utils.InvalidKeyTypeException;
 import bmoore.encryptext.utils.PRNGFixes;
 
 
 /**
  * Here I will keep the to-do's for the whole app.
- *
+ * <p/>
  * Threading: attach finishedtexts arraylist to notification, so app can exit, or otherwise engineer
  * ability for service to exit while only a notification is up. Also re-engineer the closing of the
  * service in HomeActivity, so that the service is not indiscriminately killed.
- *
+ * <p/>
  * Preferred arch: hold arraylist of finishedtexts for notification, then if nothing else and
  * notification deleted, bump thread for exit check. When HomeActivity exits, bump thread as well.
- *
- *
+ * <p/>
+ * <p/>
  * Create fixed length error markers for file, so we can tell what kind of error occurred, if
  * necessary, and correct by offering tap-to-resend
- *
- *
  */
 
-public class EncrypText extends Application
-{
-	private Files manager;
+public class EncrypText extends Application {
+    //private Files manager;
     private Cryptor cryptor;
-	private String isoCountryCode;
+    private String isoCountryCode;
     private PhoneNumberUtil phoneNumberUtil;
     private DBUtils dbUtils;
 
@@ -72,17 +62,16 @@ public class EncrypText extends Application
     public static final int PUBLIC_KEY_PDU = 1;
     public static final int AES_ENCRYPTED_PDU = 2;
 
-    public static final String UNRECOGNIZED_NUMBER_FORMAT = "Unrecognized number format";
+    public static final String UNRECOGNIZED_NUMBER_FORMAT = "Unrecognized format";
 
     private static final String TAG = "EncrypText";
 
 
     @Override
-	public void onCreate()
-	{
-		super.onCreate();
+    public void onCreate() {
+        super.onCreate();
 
-		PRNGFixes.apply();
+        PRNGFixes.apply();
 
         TelephonyManager tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         isoCountryCode = tm.getSimCountryIso();
@@ -90,7 +79,7 @@ public class EncrypText extends Application
         phoneNumberUtil = PhoneNumberUtil
                 .getInstance();
 
-		//manager = new Files(this, phoneNumber);
+        //manager = new Files(this, phoneNumber);
         dbUtils = new DBUtils(this);
 
         try {
@@ -100,24 +89,28 @@ public class EncrypText extends Application
             Log.e(TAG, "Error initializing public key cryptography", e);
             Toast.makeText(this, "Error initializing public key cryptography", Toast.LENGTH_SHORT).show();
         }
-	}
-	
-	private String formatNumber(String number)
+    }
+
+	/*private String formatNumber(String number)
 	{
 		String result = number.replace("(", "").replace(")", "").replace(" ", "").replace("-", "");
 		if (!result.contains("+"))
 			result = "+" + result;
 		return result;
-	}
+	}*/
 	
-	public Files getFileManager()
+	/*public Files getFileManager()
 	{
 		return manager;
-	}
+	}*/
 
-    public Cryptor getCryptor() { return cryptor; }
+    public Cryptor getCryptor() {
+        return cryptor;
+    }
 
-    public DBUtils getDbUtils() { return dbUtils; }
+    public DBUtils getDbUtils() {
+        return dbUtils;
+    }
 
     public PhoneNumberUtil getPhoneNumberUtil() {
         return phoneNumberUtil;

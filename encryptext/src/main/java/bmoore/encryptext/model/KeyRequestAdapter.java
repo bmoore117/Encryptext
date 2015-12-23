@@ -9,11 +9,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.List;
-import java.util.Locale;
 
 import bmoore.encryptext.R;
 import bmoore.encryptext.utils.DateUtils;
@@ -26,8 +22,7 @@ public class KeyRequestAdapter extends ArrayAdapter<KeyRequest> {
     ArrayList<KeyRequest> data = null;
     int layoutResourceId;
 
-    public KeyRequestAdapter(Context context, int layoutResourceId, ArrayList<KeyRequest> keyRequests)
-    {
+    public KeyRequestAdapter(Context context, int layoutResourceId, ArrayList<KeyRequest> keyRequests) {
         super(context, layoutResourceId, keyRequests);
         this.layoutResourceId = layoutResourceId;
         this.context = context;
@@ -35,10 +30,8 @@ public class KeyRequestAdapter extends ArrayAdapter<KeyRequest> {
     }
 
     @Override
-    public View getView(int pos, View row, ViewGroup parent)
-    {
-        if(row == null)
-        {
+    public View getView(int pos, View row, ViewGroup parent) {
+        if (row == null) {
             LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
             row = inflater.inflate(R.layout.key_exchange_request_listitem, parent, false);
         }
@@ -54,12 +47,12 @@ public class KeyRequestAdapter extends ArrayAdapter<KeyRequest> {
 
         String statusFriendly = "";
 
-        if(Contact.KeyStatus.NEEDS_REVIEW.toString().equals(request.getStatus()))
+        if (Contact.KeyStatus.NEEDS_REVIEW.toString().equals(request.getStatus()))
             statusFriendly = "Tap to review";
-        else if(Contact.KeyStatus.REQUEST_SENT.toString().equals(request.getStatus()))
+        else if (Contact.KeyStatus.REQUEST_SENT.toString().equals(request.getStatus()))
             statusFriendly = "Request sent";
 
-        if(request.getStatus() != null && request.getDate() != null)
+        if (request.getStatus() != null && request.getDate() != null)
             status.setText(statusFriendly);
 
         contactThumb.setImageBitmap(request.getContactThumb());
@@ -69,8 +62,7 @@ public class KeyRequestAdapter extends ArrayAdapter<KeyRequest> {
         return row;
     }
 
-    public List<KeyRequest> getData()
-    {
+    public List<KeyRequest> getData() {
         return data;
     }
 }

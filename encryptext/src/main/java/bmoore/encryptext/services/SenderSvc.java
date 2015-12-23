@@ -19,7 +19,6 @@ import java.lang.ref.WeakReference;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
-import java.util.LinkedList;
 import java.util.TreeMap;
 
 import javax.crypto.BadPaddingException;
@@ -61,8 +60,7 @@ public class SenderSvc extends Service {
 
 
     @Override
-    public void onCreate()
-    {
+    public void onCreate() {
         super.onCreate();
 
         Log.i(TAG, "SenderSvc created");
@@ -92,8 +90,7 @@ public class SenderSvc extends Service {
     }
 
     @Override
-    public int onStartCommand(Intent intent, int one, int two)
-    {
+    public int onStartCommand(Intent intent, int one, int two) {
         Log.i(TAG, "Intent received");
 
         Message message = Message.obtain();
@@ -104,45 +101,36 @@ public class SenderSvc extends Service {
         return START_REDELIVER_INTENT;
     }
 
-    private void handleJob(Bundle b)
-    {
-        if (b != null)
-        {
+    private void handleJob(Bundle b) {
+        if (b != null) {
             String address = b.getString(EncrypText.ADDRESS);
             int pos = b.getInt(EncrypText.THREAD_POSITION, -1);
             Key key = (Key) b.getSerializable(EncrypText.KEY);
             boolean shouldQuit = b.getBoolean(EncrypText.QUIT_FLAG, false);
             int flags = b.getInt(EncrypText.FLAGS, -1);
 
-            if(key != null && address != null)
-            {
+            if (key != null && address != null) {
                 Log.i(TAG, "Sending public key");
                 sendKey(key, address);
 
-                if(flags == EncrypText.FLAG_GENERATE_SECRET_KEY) {
+                if (flags == EncrypText.FLAG_GENERATE_SECRET_KEY) {
                     //cancel notification - action doesn't automatically do so
                     NotificationManager manager = (NotificationManager) getSystemService(ReceiverSvc.NOTIFICATION_SERVICE);
                     manager.cancel(address.hashCode());
 
                     generateSecretKey(address);
                 }
-            }
-            else if(address != null && pos != -1)
-            {
+            } else if (address != null && pos != -1) {
                 Log.i(TAG, "Confirming message part");
                 confirmMessagePart(address, pos);
-            }
-            else if(shouldQuit)
+            } else if (shouldQuit)
                 tryQuit();
-        }
-        else
+        } else
             tryQuit();
     }
 
-    private void tryQuit()
-    {
-        if(!HomeActivity.isCreated() && !ConversationActivity.isCreated() && processingStatus == 0)
-        {
+    private void tryQuit() {
+        if (!HomeActivity.isCreated() && !ConversationActivity.isCreated() && processingStatus == 0) {
             Log.i(TAG, "Quit Check Passed");
             stopSelf();
         }
@@ -153,15 +141,13 @@ public class SenderSvc extends Service {
         SecretKey secretKey;
         try {
             secretKey = cryptor.createAndStoreSecretKey(address);
-        }
-        catch (InvalidKeyException | InvalidKeyTypeException e) {
+        } catch (InvalidKeyException | InvalidKeyTypeException e) {
             Log.e(TAG, "Error generating secret key", e);
             Toast.makeText(this, "Could not generate secret key from exchange", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        if ((ConversationActivity.isActive()) && (ConversationActivity.currentNumber().equals(address)))
-        {
+        if ((ConversationActivity.isActive()) && (ConversationActivity.currentNumber().equals(address))) {
             Log.i(TAG, "Passing secret key to ConversationActivity");
             Intent in = new Intent(this, ConversationActivity.class);
             in.putExtra(EncrypText.KEY, secretKey);
@@ -170,8 +156,7 @@ public class SenderSvc extends Service {
         }
     }
 
-    public void sendKey(Key key, String address)
-    {
+    public void sendKey(Key key, String address) {
         byte[] keyBytes = key.getEncoded();
         double pdus = keyBytes.length / (double) (MAX_DATA_BYTES - HEADER_SIZE); //effective data #
 
@@ -180,15 +165,14 @@ public class SenderSvc extends Service {
 
         Log.i(TAG, "Sending key of length " + keyBytes.length + " in " + pdus + " parts");
         String temp = "";
-        for(byte b : keyBytes)
+        for (byte b : keyBytes)
             temp += b + " ";
         Log.i(TAG, temp);
 
         byte[][] message = new byte[(int) pdus][MAX_DATA_BYTES];
 
         int k = 0;
-        for(int pdu = 0; pdu < pdus; pdu++)
-        {
+        for (int pdu = 0; pdu < pdus; pdu++) {
             //indicating key exchange
             message[pdu][0] = 1;
 
@@ -196,15 +180,14 @@ public class SenderSvc extends Service {
             message[pdu][1] = (byte) keyBytes.length;
 
             message[pdu][2] = (byte) pdus;
-            message[pdu][3] =  (byte) pdu;
+            message[pdu][3] = (byte) pdu;
 
-            for(int j = 4; j < MAX_DATA_BYTES && k < keyBytes.length; j++)
-            {
+            for (int j = 4; j < MAX_DATA_BYTES && k < keyBytes.length; j++) {
                 message[pdu][j] = keyBytes[k];
                 k++;
             }
 
-            for(byte[] part : message) {
+            for (byte[] part : message) {
                 Intent in = new Intent(SENT_INTENT);
                 PendingIntent sent = PendingIntent.getBroadcast(this, 0, in,
                         PendingIntent.FLAG_UPDATE_CURRENT);
@@ -214,12 +197,10 @@ public class SenderSvc extends Service {
         }
     }
 
-    public synchronized void sendMessage(ConversationEntry item, int place, Key key)
-    {
+    public synchronized void sendMessage(ConversationEntry item, int place, Key key) {
         String address = item.getNumber();
 
-        if(!currentConv.equals(address))
-        {
+        if (!currentConv.equals(address)) {
             sequenceNo = 0;
             currentConv = address;
         }
@@ -228,8 +209,7 @@ public class SenderSvc extends Service {
 
         try {
             encryptedMessage = cryptor.encryptMessage(item.getMessage().getBytes(), (SecretKey) key, sequenceNo);
-        }
-        catch (InvalidKeyException | BadPaddingException | IllegalBlockSizeException | InvalidAlgorithmParameterException e) {
+        } catch (InvalidKeyException | BadPaddingException | IllegalBlockSizeException | InvalidAlgorithmParameterException e) {
             Log.e(TAG, "While encrypting message", e);
             Toast.makeText(this, "Encryption error while sending message", Toast.LENGTH_SHORT).show();
             return;
@@ -243,24 +223,21 @@ public class SenderSvc extends Service {
         byte[][] message = new byte[(int) packets][MAX_DATA_BYTES];
 
         int k = 0;
-        for(int pdu = 0; pdu < packets; pdu++)
-        {
+        for (int pdu = 0; pdu < packets; pdu++) {
             //2 for AES
             message[pdu][0] = 2;
 
             //message sequence number - session based - can only send 127 messages per session
-            if(sequenceNo > 127)
+            if (sequenceNo > 127)
                 return;
-            else
-            {
+            else {
                 message[pdu][1] = (byte) sequenceNo;
             }
 
             message[pdu][2] = (byte) packets;
-            message[pdu][3] =  (byte) pdu;
+            message[pdu][3] = (byte) pdu;
 
-            for(int j = 4; j < MAX_DATA_BYTES && k < encryptedMessage.length; j++)
-            {
+            for (int j = 4; j < MAX_DATA_BYTES && k < encryptedMessage.length; j++) {
                 message[pdu][j] = encryptedMessage[k];
                 k++;
             }
@@ -271,8 +248,7 @@ public class SenderSvc extends Service {
 
         setupMessageConfirmation(address, place, messageId, message.length);
 
-        for(byte[] pdu : message)
-        {
+        for (byte[] pdu : message) {
             Intent in = new Intent(SENT_INTENT);
             in.putExtra(EncrypText.THREAD_POSITION, place);
             in.putExtra(EncrypText.ADDRESS, address);
@@ -285,10 +261,9 @@ public class SenderSvc extends Service {
         sequenceNo++; //next sequence number
     }
 
-    private void setupMessageConfirmation(String number, int place, long messageId, int parts)
-    {
+    private void setupMessageConfirmation(String number, int place, long messageId, int parts) {
         Log.i(TAG, "Adding message");
-        if(!partialConfs.containsKey(number))
+        if (!partialConfs.containsKey(number))
             partialConfs.put(number, new TreeMap<Integer, MessageConfirmation>());
 
         Log.i(TAG, "setupMessageConfirmation Processing status " + processingStatus);
@@ -297,20 +272,18 @@ public class SenderSvc extends Service {
         Log.i(TAG, "setupMessageConfirmation Processing status " + processingStatus);
     }
 
-    private void confirmMessagePart(String number, int pos)
-    {
+    private void confirmMessagePart(String number, int pos) {
         Log.i(TAG, number + " " + pos);
 
         MessageConfirmation confirmation = partialConfs.get(number).get(pos);
 
-        if(confirmation.getMessageParts() > 0)
+        if (confirmation.getMessageParts() > 0)
             confirmation.setMessageParts(confirmation.getMessageParts() - 1);
 
-        if(confirmation.getMessageParts() == 0)
-        {
+        if (confirmation.getMessageParts() == 0) {
             String time = DateUtils.buildDate();
 
-            if(!confirmTimes.containsKey(number))
+            if (!confirmTimes.containsKey(number))
                 confirmTimes.put(number, new TreeMap<Integer, String>());
 
             confirmTimes.get(number).put(pos, time);
@@ -322,9 +295,8 @@ public class SenderSvc extends Service {
             processingStatus--;
             Log.i(TAG, "confirmMessagePart Processing status " + processingStatus);
 
-            if(ConversationActivity.isActive() &&
-                    ConversationActivity.currentNumber().equals(number))
-            {
+            if (ConversationActivity.isActive() &&
+                    ConversationActivity.currentNumber().equals(number)) {
                 Intent in = new Intent(this, ConversationActivity.class);
                 in.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
@@ -332,14 +304,12 @@ public class SenderSvc extends Service {
                 in.putExtra(EncrypText.TIME, time);
 
                 startActivity(in);
-            }
-            else if(!ConversationActivity.isActive() && ConversationActivity.currentNumber().equals(number))
+            } else if (!ConversationActivity.isActive() && ConversationActivity.currentNumber().equals(number))
                 ConversationActivity.markNewConfs();
         }
     }
 
-    public TreeMap<Integer, String> getConfs(String number)
-    {
+    public TreeMap<Integer, String> getConfs(String number) {
         return confirmTimes.get(number);
     }
 
@@ -348,10 +318,8 @@ public class SenderSvc extends Service {
     }
 
 
-    public class SenderBinder extends Binder
-    {
-        public SenderSvc getService()
-        {
+    public class SenderBinder extends Binder {
+        public SenderSvc getService() {
             return SenderSvc.this;
         }
     }

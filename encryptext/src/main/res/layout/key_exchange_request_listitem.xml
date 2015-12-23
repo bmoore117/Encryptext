@@ -3,7 +3,7 @@
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
                 android:paddingBottom="5dp"
-                android:paddingTop="5dp" >
+                android:paddingTop="5dp">
 
     <ImageView
         android:id="@+id/key_exchange_request_listitem_contact_thumb"

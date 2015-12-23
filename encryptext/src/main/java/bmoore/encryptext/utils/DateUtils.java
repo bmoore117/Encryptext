@@ -15,25 +15,24 @@ public class DateUtils {
         calendar = new GregorianCalendar(Locale.getDefault());
     }
 
-    public static String buildDate()
-    {
+    public static String buildDate() {
         String time;
 
         int hour = calendar.get(Calendar.HOUR);
 
-        if(hour == 0)
+        if (hour == 0)
             time = "12:";
         else
             time = hour + ":";
 
 
         int minute = calendar.get(Calendar.MINUTE);
-        if(minute < 10) //apply minute filtering
+        if (minute < 10) //apply minute filtering
             time += "0" + minute;
         else
             time += minute;
 
-        if(calendar.get(Calendar.AM_PM) == 0)
+        if (calendar.get(Calendar.AM_PM) == 0)
             time += " AM";
         else
             time += " PM";
@@ -44,22 +43,19 @@ public class DateUtils {
         return time;
     }
 
-    public static String formatDate(String date)
-    {
+    public static String formatDate(String date) {
         //Log.i("Adapter", "Formatting date");
-        if(date == null)
+        if (date == null)
             return null;
 
-        if("Sending".equals(date) || !date.contains(","))
+        if ("Sending".equals(date) || !date.contains(","))
             return date;
 
         String[] dateParts = date.split(",");
 
-        if(Integer.decode(dateParts[3]) == calendar.get(Calendar.YEAR))
-        {
-            if(Integer.decode(dateParts[1]) == calendar.get(Calendar.MONTH) && Integer.decode(dateParts[2])
-                    == calendar.get(Calendar.DAY_OF_MONTH))
-            {
+        if (Integer.decode(dateParts[3]) == calendar.get(Calendar.YEAR)) {
+            if (Integer.decode(dateParts[1]) == calendar.get(Calendar.MONTH) && Integer.decode(dateParts[2])
+                    == calendar.get(Calendar.DAY_OF_MONTH)) {
                 //Log.i("Adapter", "Returning " + dateParts[0]);
                 return dateParts[0]; //return time of day
             }
@@ -71,30 +67,29 @@ public class DateUtils {
         return findMonth(dateParts[1]) + " " + dateParts[2] + ", " + dateParts[3];
     }
 
-    private static String findMonth(String val)
-    {
+    private static String findMonth(String val) {
 
-        if(val.equals("0"))
+        if (val.equals("0"))
             return "Jan ";
-        else if(val.equals("1"))
+        else if (val.equals("1"))
             return "Feb ";
-        else if(val.equals("2"))
+        else if (val.equals("2"))
             return "Mar ";
-        else if(val.equals("3"))
+        else if (val.equals("3"))
             return "Apr ";
-        else if(val.equals("4"))
+        else if (val.equals("4"))
             return "May ";
-        else if(val.equals("5"))
+        else if (val.equals("5"))
             return "Jun ";
-        else if(val.equals("6"))
+        else if (val.equals("6"))
             return "Jul ";
-        else if(val.equals("7"))
+        else if (val.equals("7"))
             return "Aug ";
-        else if(val.equals("8"))
+        else if (val.equals("8"))
             return "Sep ";
-        else if(val.equals("9"))
+        else if (val.equals("9"))
             return "Oct ";
-        else if(val.equals("10"))
+        else if (val.equals("10"))
             return "Nov ";
         else
             return "Dec ";

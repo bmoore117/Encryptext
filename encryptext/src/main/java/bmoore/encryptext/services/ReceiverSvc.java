@@ -51,8 +51,7 @@ import bmoore.encryptext.utils.DBUtils;
 import bmoore.encryptext.utils.DateUtils;
 import bmoore.encryptext.utils.InvalidKeyTypeException;
 
-public class ReceiverSvc extends Service
-{
+public class ReceiverSvc extends Service {
     private static final String TAG = "ReceiverSvc";
     private static boolean created;
     private static TreeMap<String, TreeMap<Integer, Timer>> messageExp;
@@ -69,15 +68,14 @@ public class ReceiverSvc extends Service
 
     private ReceiverHandler handler;
 
-    public static boolean isCreated()
-    {
+    public static boolean isCreated() {
         return created;
     }
 
     /**
      * Method to handle slotting a new PDU into the service holding data structures, and checking
      * if that PDU completes a logical message, as denoted by sequence number.
-     *
+     * <p/>
      * First cancels any message expiration timer for the phone & sequence number combination that
      * the incoming PDU belongs to, so as to prevent issues with concurrent access, and then checks to
      * see if any relevant conversation thread exists at all for the number the PDU is from. If not,
@@ -85,22 +83,20 @@ public class ReceiverSvc extends Service
      * or completes a logical message. If so, passes to the activities or creates a notification. If
      * not, starts a countdown. If no additional message fragments are received before the count reaches
      * zero, the message fragment is thrown out.
-     *
+     * <p/>
      * Note: implement some maximum size on logical messages to prevent memory spam? Stop timers in buildPdus?
      * Avoid writing ack to file?
      *
      * @param address - A String phone number
-     * @param header - a byte array representing the header of the PDU (UDH)
-     * @param body - a byte array representing the body of a PDU
+     * @param header  - a byte array representing the header of the PDU (UDH)
+     * @param body    - a byte array representing the body of a PDU
      */
-    private void addMsgFragment(String address, byte[] header, byte[] body)
-    {
+    private void addMsgFragment(String address, byte[] header, byte[] body) {
         //HEADER FMT: [msg type][msg seq #][frag #][part #] - [] denotes 1 byte
         int seq = header[1];
 
         //cancel timer when accessing message slots
-        if(messageExp.containsKey(address) && messageExp.get(address).containsKey(seq))
-        {
+        if (messageExp.containsKey(address) && messageExp.get(address).containsKey(seq)) {
             messageExp.get(address).get(seq).cancel();
             messageExp.get(address).remove(seq);
         }
@@ -109,12 +105,12 @@ public class ReceiverSvc extends Service
         int part = header[3];
 
         //init thread if not extant
-        if(!pendingTexts.containsKey(address))
+        if (!pendingTexts.containsKey(address))
             pendingTexts.put(address, new TreeMap<Integer, byte[][]>());
 
         TreeMap<Integer, byte[][]> thread = pendingTexts.get(address); //retrieve reference
 
-        if(!thread.containsKey(Integer.valueOf(seq))) //init slot if new logical message for thread
+        if (!thread.containsKey(Integer.valueOf(seq))) //init slot if new logical message for thread
         {
             thread.put(seq, new byte[parts][MAX_DATA_BYTES - HEADER_LENGTH]);
             Log.i(TAG, "AddMsgFragment Processing status " + processingStatus);
@@ -127,21 +123,19 @@ public class ReceiverSvc extends Service
         thread.get(seq)[part] = body;
 
         //check complete message & notify gui
-        if(isCompleteMessage(thread.get(seq)))
-        {
+        if (isCompleteMessage(thread.get(seq))) {
             //if receiving a public key
-            if(header[0] == EncrypText.PUBLIC_KEY_PDU)
-            {
+            if (header[0] == EncrypText.PUBLIC_KEY_PDU) {
                 Log.i(TAG, "Received public key");
 
                 String temp = "";
-                for(byte b : body)
+                for (byte b : body)
                     temp += b + " ";
                 Log.i(TAG, temp);
 
                 byte[] key = buildKey(thread.get(seq), seq);
                 temp = "";
-                for(byte b : key)
+                for (byte b : key)
                     temp += b + " ";
                 Log.i(TAG, temp);
 
@@ -158,8 +152,7 @@ public class ReceiverSvc extends Service
                     Log.e(TAG, "Could not store received public key", e);
                     Toast.makeText(this, "Could not store received public key", Toast.LENGTH_SHORT).show();
                 }
-            }
-            else if(header[0] == EncrypText.AES_ENCRYPTED_PDU) //2 for regular aes encrypted message
+            } else if (header[0] == EncrypText.AES_ENCRYPTED_PDU) //2 for regular aes encrypted message
             {
                 Log.i(TAG, "Building complete message");
                 try {
@@ -167,7 +160,7 @@ public class ReceiverSvc extends Service
                     String message = buildMessage(thread.get(seq), key, seq, address);
 
                     //we don't know if we'll get killed before the user goes to that conversation
-                    if(!ConversationActivity.isActive() || !address.equals(ConversationActivity.currentNumber())) {
+                    if (!ConversationActivity.isActive() || !address.equals(ConversationActivity.currentNumber())) {
                         cryptor.storeLastEncryptedBlock(key, address);
                     }
 
@@ -182,10 +175,9 @@ public class ReceiverSvc extends Service
                     Toast.makeText(this, "Could not load secret key", Toast.LENGTH_SHORT).show();
                 }
             }
-        }
-        else //add || update timer in slot
+        } else //add || update timer in slot
         {
-            if(!messageExp.containsKey(address))
+            if (!messageExp.containsKey(address))
                 messageExp.put(address, new TreeMap<Integer, Timer>());
 
             dumpMsg d = new dumpMsg(address, seq);
@@ -202,26 +194,23 @@ public class ReceiverSvc extends Service
      * @param message - a two layer byte array
      * @return - a String
      */
-    private String buildMessage(byte[][] message, SecretKey key, int sequenceNo, String address)
-    {
-        byte[] buffer = new byte[message.length*(MAX_DATA_BYTES - HEADER_LENGTH)];
+    private String buildMessage(byte[][] message, SecretKey key, int sequenceNo, String address) {
+        byte[] buffer = new byte[message.length * (MAX_DATA_BYTES - HEADER_LENGTH)];
 
-        for(int i = 0; i < message.length; i++)
-        {
+        for (int i = 0; i < message.length; i++) {
             byte[] pdu = message[i];
-            System.arraycopy(pdu, 0, buffer, i*pdu.length, pdu.length);
+            System.arraycopy(pdu, 0, buffer, i * pdu.length, pdu.length);
         }
 
         // If a message is split over multiple pdus, it will probably have trailing 0s at the end which will
         //produce garbage during decryption
         buffer = trimTrailingNulls(buffer);
 
-        byte[] decryptedBuffer = new byte[] {0};
+        byte[] decryptedBuffer = new byte[]{0};
 
         try {
             decryptedBuffer = cryptor.decryptMessage(buffer, key, sequenceNo, address);
-        }
-        catch (InvalidKeyException | BadPaddingException | IllegalBlockSizeException | InvalidAlgorithmParameterException e) {
+        } catch (InvalidKeyException | BadPaddingException | IllegalBlockSizeException | InvalidAlgorithmParameterException e) {
             Log.e(TAG, "While decrypting message", e);
             Toast.makeText(this, "Error decrypting message", Toast.LENGTH_SHORT).show();
         }
@@ -229,24 +218,21 @@ public class ReceiverSvc extends Service
         return new String(decryptedBuffer);
     }
 
-    private byte[] trimTrailingNulls(byte[] buffer)
-    {
+    private byte[] trimTrailingNulls(byte[] buffer) {
         int i = buffer.length - 1;
-        while(buffer[i] == 0)
+        while (buffer[i] == 0)
             --i;
         // now buffer[i] is the last non-zero byte
-        byte[] trimmed = new byte[i+1];
-        System.arraycopy(buffer, 0, trimmed, 0, i+1);
+        byte[] trimmed = new byte[i + 1];
+        System.arraycopy(buffer, 0, trimmed, 0, i + 1);
         return trimmed;
     }
 
-    private byte[] buildKey(byte[][] parts, int length)
-    {
+    private byte[] buildKey(byte[][] parts, int length) {
         byte[] key = new byte[length];
 
         int k = 0;
-        for(int i = 0; i < parts.length || k < length; i++)
-        {
+        for (int i = 0; i < parts.length || k < length; i++) {
             System.arraycopy(parts[i], 0, key, k, length - k);// length - k leads to overflow?
             k = length - k + 1;
         }
@@ -262,19 +248,16 @@ public class ReceiverSvc extends Service
      *
      * @param bundle - PDUs wrapped in an Android bundle
      */
-    private void buildPdus(Bundle bundle)
-    {
+    private void buildPdus(Bundle bundle) {
         Object[] pdus = (Object[]) bundle.get(EncrypText.PDUS);
         String format = bundle.getString(EncrypText.FORMAT);
 
         SmsMessage sms;
 
-        for (Object pdu : pdus)
-        {
+        for (Object pdu : pdus) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 sms = SmsMessage.createFromPdu((byte[]) pdu, format);
-            }
-            else {
+            } else {
                 sms = SmsMessage.createFromPdu((byte[]) pdu);
             }
 
@@ -291,21 +274,19 @@ public class ReceiverSvc extends Service
      * results, returns a ConversationEntry with the number the message is
      * from in the name slot
      *
-     *
      * @param address - a string representing a phone number
      * @param message - a string representing the body of a text message
      * @return A ConversationEntry filled out with a name if possible
      */
-    private ConversationEntry buildThreadEntry(String address, String message)
-    {
+    private ConversationEntry buildThreadEntry(String address, String message) {
         Log.i(TAG, "Building thread entry");
 
         String name = null;
-        if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
             name = ContactUtils.getContactName(getContentResolver(), address);
         }
 
-        if(name == null) { // needed as a separate check because devices below API 23 will always pass above
+        if (name == null) { // needed as a separate check because devices below API 23 will always pass above
             name = address;
         }
 
@@ -316,11 +297,11 @@ public class ReceiverSvc extends Service
 
         boolean useDrawable = false;
         Bitmap pic = null;
-        if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
             pic = ContactUtils.getBitmap(getContentResolver(), address);
         }
 
-        if(pic == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        if (pic == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             useDrawable = true;
         } else if (pic == null) {
             pic = BitmapFactory.decodeResource(getResources(), R.drawable.ic_account_box_gray_48dp);
@@ -328,7 +309,7 @@ public class ReceiverSvc extends Service
 
         ConversationEntry item = new ConversationEntry(message, address, name, time, pic);
 
-        if(useDrawable) {
+        if (useDrawable) {
             item.setImageResourceId(R.drawable.ic_account_box_gray_48dp);
         }
 
@@ -343,55 +324,48 @@ public class ReceiverSvc extends Service
      * @param message a 2D byte array representing a collection of PDUs
      * @return whether all parts of message have been received
      */
-    private boolean isCompleteMessage(byte[][] message)
-    {
+    private boolean isCompleteMessage(byte[][] message) {
 
-        for(byte[] pdu : message)
-        {
-            if(pdu[0] == 0)
+        for (byte[] pdu : message) {
+            if (pdu[0] == 0)
                 return false;
         }
 
         return true;
     }
 
-    private void tryQuit()
-    {
-        if(!HomeActivity.isCreated() && !ConversationActivity.isCreated() && processingStatus == 0)
-        {
+    private void tryQuit() {
+        if (!HomeActivity.isCreated() && !ConversationActivity.isCreated() && processingStatus == 0) {
             Log.i(TAG, "Quit Check Passed");
             stopSelf();
         }
     }
 
-    private void showKeyExchangeNotification(String address)
-    {
+    private void showKeyExchangeNotification(String address) {
         SharedPreferences prefs = getSharedPreferences(EncrypText.class.getSimpleName(), MODE_PRIVATE);
         Notification.Builder builder = new Notification.Builder(this);
 
         String name;
-        if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
             name = ContactUtils.getContactName(getContentResolver(), address);
         } else {
             name = address;
         }
 
-        if(prefs.contains(address)) {
+        if (prefs.contains(address)) {
             prefs.edit().remove(address).apply();
 
             Log.i(TAG, "Generating secret key");
             SecretKey secretKey;
             try {
                 secretKey = cryptor.createAndStoreSecretKey(address);
-            }
-            catch (InvalidKeyException | InvalidKeyTypeException e) {
+            } catch (InvalidKeyException | InvalidKeyTypeException e) {
                 Log.e(TAG, "Error generating secret key", e);
                 Toast.makeText(this, "Could not generate secret key from exchange", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            if ((ConversationActivity.isActive()) && (ConversationActivity.currentNumber().equals(address)))
-            {
+            if ((ConversationActivity.isActive()) && (ConversationActivity.currentNumber().equals(address))) {
                 Log.i(TAG, "Passing secret key to ConversationActivity");
                 Intent in = new Intent(this, ConversationActivity.class);
                 in.putExtra(EncrypText.KEY, secretKey);
@@ -417,7 +391,7 @@ public class ReceiverSvc extends Service
             PendingIntent p2 = PendingIntent.getService(this, 2, no, PendingIntent.FLAG_UPDATE_CURRENT);
             builder.addAction(R.drawable.ic_clear_black_24dp, "No", p2);
 
-            if(name == null || "".equals(name))
+            if (name == null || "".equals(name))
                 name = address;
 
             Intent delete = new Intent(this, ReceiverSvc.class);
@@ -430,7 +404,7 @@ public class ReceiverSvc extends Service
             builder.setContentTitle("Request from " + name);
             builder.setContentText(name + " is requesting to swap public keys with you. Accept and reply with your key?");
 
-            if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
                 builder.setLargeIcon(ContactUtils.getBitmap(getContentResolver(), address));
             } else {
                 builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.ic_account_box_gray_48dp));
@@ -447,8 +421,7 @@ public class ReceiverSvc extends Service
         ).notify(address.hashCode(), builder.build());
     }
 
-    private void makeNotification(ConversationEntry item)
-    {
+    private void makeNotification(ConversationEntry item) {
         Notification.Builder builder = new Notification.Builder(this);
         Intent in = new Intent(this, ReceiverSvc.class);
 
@@ -476,38 +449,33 @@ public class ReceiverSvc extends Service
         builder.setPriority(Notification.PRIORITY_HIGH); //for heads up notification
         builder.setDefaults(Notification.DEFAULT_VIBRATE | Notification.DEFAULT_SOUND);
 
-        ((NotificationManager)getSystemService(ReceiverSvc.NOTIFICATION_SERVICE) //Note: valid?
+        ((NotificationManager) getSystemService(ReceiverSvc.NOTIFICATION_SERVICE) //Note: valid?
         ).notify(item.getNumber().hashCode(), builder.build());
     }
 
-    private void passOrNotify(ConversationEntry item)
-    {
+    private void passOrNotify(ConversationEntry item) {
         Log.i(TAG, "Writing message");
         String address = item.getNumber();
         dbUtils.storeMessage(item);
         //manager.writeSMS(address, item, -1, this); //should add to end
 
-        if ((ConversationActivity.isActive()) && (ConversationActivity.currentNumber().equals(address)))
-        {
+        if ((ConversationActivity.isActive()) && (ConversationActivity.currentNumber().equals(address))) {
             Log.i(TAG, "Passing");
             Intent in = new Intent(this, ConversationActivity.class);
             in.putExtra(EncrypText.THREAD_ITEM, item);
             in.setFlags(872415232); //Basically, clear top | single top | new task, as I recall.
             startActivity(in);
-        }
-        else if (HomeActivity.isActive())
-        {
+        } else if (HomeActivity.isActive()) {
             Intent in = new Intent(this, HomeActivity.class);
             item.setAddress(address);
             in.putExtra(EncrypText.THREAD_ITEM, item);
             in.setFlags(872415232);
             startActivity(in);
-        }
-        else //notify
+        } else //notify
         {
             //manager.writePreview(item, this);
 
-            if(!finishedTexts.containsKey(address))
+            if (!finishedTexts.containsKey(address))
                 finishedTexts.put(address, new ArrayList<ConversationEntry>());
 
             Log.i(TAG, "PassOrNotify Processing status " + processingStatus);
@@ -519,26 +487,21 @@ public class ReceiverSvc extends Service
         }
     }
 
-    private void process(String address, String name)
-    {
+    private void process(String address, String name) {
         Intent in = new Intent(this, ConversationActivity.class);
 
-        if ((ConversationActivity.isCreated()) && (ConversationActivity.currentNumber().equals(address)))
-        {
+        if ((ConversationActivity.isCreated()) && (ConversationActivity.currentNumber().equals(address))) {
             in.putExtra(EncrypText.MULTIPLE_THREAD_ITEMS, this.finishedTexts.get(address));
             in.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(in);
-        }
-        else if ((ConversationActivity.isCreated()) && (!ConversationActivity.currentNumber().equals(address)))
-        {
+        } else if ((ConversationActivity.isCreated()) && (!ConversationActivity.currentNumber().equals(address))) {
             //file reload pass
             in.putExtra(EncrypText.ADDRESS, address);
             in.putExtra(EncrypText.NAME, name);
             in.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
             startActivity(in);
-        }
-        else //cold start from file
+        } else //cold start from file
         {
             in.putExtra(EncrypText.ADDRESS, address);
             in.putExtra(EncrypText.NAME, name);
@@ -557,8 +520,7 @@ public class ReceiverSvc extends Service
         Log.i(TAG, "Process Processing status " + processingStatus);
     }
 
-    private byte[] readBody(byte[] pdu)
-    {
+    private byte[] readBody(byte[] pdu) {
         byte[] body = new byte[MAX_DATA_BYTES - HEADER_LENGTH];
 
         System.arraycopy(pdu, 4, body, 0, body.length);
@@ -566,8 +528,7 @@ public class ReceiverSvc extends Service
         return body;
     }
 
-    private byte[] readHeader(byte[] pdu)
-    {
+    private byte[] readHeader(byte[] pdu) {
         byte[] header = new byte[HEADER_LENGTH];
 
         System.arraycopy(pdu, 0, header, 0, 4);
@@ -575,21 +536,18 @@ public class ReceiverSvc extends Service
         return header;
     }
 
-    public IBinder onBind(Intent paramIntent)
-    {
+    public IBinder onBind(Intent paramIntent) {
         return null;
     }
 
     @Override
-    public void onDestroy()
-    {
+    public void onDestroy() {
         created = false;
         super.onDestroy();
     }
 
     @Override
-    public void onCreate()
-    {
+    public void onCreate() {
         super.onCreate();
 
         // The attributes you want retrieved
@@ -602,10 +560,9 @@ public class ReceiverSvc extends Service
 
         created = true;
         processingStatus = 0;
-        app = ((EncrypText)getApplication());
+        app = ((EncrypText) getApplication());
 
-        if(app == null)
-        {
+        if (app == null) {
             Log.v(TAG, "Error retrieving application instance");
             throw new NullPointerException();
         }
@@ -621,9 +578,8 @@ public class ReceiverSvc extends Service
         messageExp = new TreeMap<>();
     }
 
-    public int onStartCommand(Intent intent, int paramInt1, int paramInt2)
-    {
-        if(intent != null) {
+    public int onStartCommand(Intent intent, int paramInt1, int paramInt2) {
+        if (intent != null) {
             Message message = Message.obtain();
             message.setData(intent.getExtras());
 
@@ -634,40 +590,31 @@ public class ReceiverSvc extends Service
     }
 
     public void handleJob(Bundle b) {
-        if (b != null)
-        {
+        if (b != null) {
             Bundle pdus = b.getBundle(EncrypText.PDUS);
             String name = b.getString(EncrypText.NAME);
             String address = b.getString(EncrypText.ADDRESS);
             String date = b.getString(EncrypText.DATE);
             int flags = b.getInt(EncrypText.FLAGS, -1);
 
-            if (pdus != null)
-            {
+            if (pdus != null) {
                 Log.i(TAG, "Building pdus");
                 buildPdus(pdus);
-            }
-            else if(date != null && name != null && address != null)
-            {
+            } else if (date != null && name != null && address != null) {
                 Log.i(TAG, "Generating key request entry");
                 dbUtils.generateKeyRequestEntry(address, name, Contact.KeyStatus.NEEDS_REVIEW, date);
                 HomeActivity.setNewKeyRequests();
 
-                if (HomeActivity.isActive())
-                {
+                if (HomeActivity.isActive()) {
                     Intent update = new Intent(this, HomeActivity.class);
                     update.putExtra(EncrypText.FLAGS, EncrypText.FLAG_UPDATE_KEY_REQUESTS_ICON);
                     update.setFlags(872415232);
                     startActivity(update);
                 }
-            }
-            else if(name != null && address != null)
-            {
+            } else if (name != null && address != null) {
                 Log.i(TAG, "Handling notification activation");
                 process(address, name);
-            }
-            else if(flags == EncrypText.FLAG_REMOVE_PUBLIC_KEY && address != null)
-            {
+            } else if (flags == EncrypText.FLAG_REMOVE_PUBLIC_KEY && address != null) {
                 Log.i(TAG, "Removing held public key");
                 try {
                     //cancel notification - action doesn't automatically do so
@@ -679,9 +626,7 @@ public class ReceiverSvc extends Service
                     Log.e(TAG, "Error removing public key", e);
                     Toast.makeText(this, "Error removing public key", Toast.LENGTH_SHORT).show();
                 }
-            }
-            else if(address != null)
-            {
+            } else if (address != null) {
                 Log.i(TAG, "Removing held texts");
                 //Log.i(TAG, "Processing status " + processingStatus);
                 //processingStatus -= finishedTexts.get(address).size();
@@ -689,8 +634,7 @@ public class ReceiverSvc extends Service
                 finishedTexts.remove(address);
                 tryQuit();
             }
-        }
-        else
+        } else
             tryQuit();
     }
 
@@ -707,19 +651,16 @@ public class ReceiverSvc extends Service
         }
     }*/
 
-    private class dumpMsg extends TimerTask
-    {
+    private class dumpMsg extends TimerTask {
         private Integer msg;
         private String num;
 
-        dumpMsg(String n, int pos)
-        {
+        dumpMsg(String n, int pos) {
             this.msg = pos;
             this.num = n;
         }
 
-        public void run()
-        {
+        public void run() {
             pendingTexts.get(num).remove(msg);
         }
     }
