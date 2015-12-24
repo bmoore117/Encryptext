@@ -1,6 +1,7 @@
 package bmoore.encryptext.utils;
 
 import java.util.Calendar;
+import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.Locale;
 
@@ -16,6 +17,8 @@ public class DateUtils {
     }
 
     public static String buildDate() {
+        calendar.setTime(new Date());
+
         String time;
 
         int hour = calendar.get(Calendar.HOUR);

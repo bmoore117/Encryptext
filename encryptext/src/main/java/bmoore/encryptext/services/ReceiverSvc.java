@@ -449,6 +449,11 @@ public class ReceiverSvc extends Service {
         builder.setPriority(Notification.PRIORITY_HIGH); //for heads up notification
         builder.setDefaults(Notification.DEFAULT_VIBRATE | Notification.DEFAULT_SOUND);
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            builder.setVisibility(Notification.VISIBILITY_PRIVATE);
+            builder.setCategory(Notification.CATEGORY_MESSAGE);
+        }
+
         ((NotificationManager) getSystemService(ReceiverSvc.NOTIFICATION_SERVICE) //Note: valid?
         ).notify(item.getNumber().hashCode(), builder.build());
     }

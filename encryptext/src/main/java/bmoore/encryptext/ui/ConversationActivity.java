@@ -487,6 +487,7 @@ public class ConversationActivity extends AppCompatActivity {
             }
 
             conversationChanged = true;
+            newData = false;
         } else if (address != null) //for jumping to new conv via notification
         {
             adapter.clear();
