@@ -475,7 +475,7 @@ public class ConversationActivity extends AppCompatActivity {
             }*/
             adapter.add(item);
             conversationChanged = true;
-        } else if (messages != null) {
+        } else if (messages != null && newData) {
             for (ConversationEntry entry : messages) //do not need times. Have been assigned in svc
             {
                 /*if(useDrawable) {
@@ -487,7 +487,6 @@ public class ConversationActivity extends AppCompatActivity {
             }
 
             conversationChanged = true;
-            newData = false;
         } else if (address != null) //for jumping to new conv via notification
         {
             adapter.clear();
@@ -563,7 +562,7 @@ public class ConversationActivity extends AppCompatActivity {
         }
 
         if (newData) {
-            new LoadConversationTask().execute(new LoadConversationArgs(number, adapter.getData().get(adapter.getData().size() - 1).getMessageId()));
+            adapter.addAll(dbUtils.loadConversation(number, adapter.getData().get(adapter.getData().size() - 1).getMessageId()));
 
             ((NotificationManager) getSystemService(
                     Context.NOTIFICATION_SERVICE)).cancel(number.hashCode());

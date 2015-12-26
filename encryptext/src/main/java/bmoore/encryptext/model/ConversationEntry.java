@@ -69,6 +69,7 @@ public class ConversationEntry implements Parcelable {
      * @param pic
      */
     public ConversationEntry(long messageId, String message, String number, String name, String date, Bitmap pic) {
+        this.messageId = messageId;
         this.message = message;
         this.name = name;
         this.number = number;

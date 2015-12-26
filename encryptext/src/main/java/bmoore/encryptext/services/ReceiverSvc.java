@@ -169,7 +169,7 @@ public class ReceiverSvc extends Service {
                     processingStatus--;
                     Log.i(TAG, "AddMsgFragment Processing status " + processingStatus);
 
-                    passOrNotify(buildThreadEntry(address, message));
+                    passOrNotify(buildThreadEntry(seq, address, message));
                 } catch (InvalidKeyTypeException e) {
                     Log.e(TAG, "Could not load secret key", e);
                     Toast.makeText(this, "Could not load secret key", Toast.LENGTH_SHORT).show();
@@ -278,7 +278,7 @@ public class ReceiverSvc extends Service {
      * @param message - a string representing the body of a text message
      * @return A ConversationEntry filled out with a name if possible
      */
-    private ConversationEntry buildThreadEntry(String address, String message) {
+    private ConversationEntry buildThreadEntry(int seq, String address, String message) {
         Log.i(TAG, "Building thread entry");
 
         String name = null;
@@ -307,7 +307,7 @@ public class ReceiverSvc extends Service {
             pic = BitmapFactory.decodeResource(getResources(), R.drawable.ic_account_box_gray_48dp);
         }
 
-        ConversationEntry item = new ConversationEntry(message, address, name, time, pic);
+        ConversationEntry item = new ConversationEntry(seq, message, address, name, time, pic);
 
         if (useDrawable) {
             item.setImageResourceId(R.drawable.ic_account_box_gray_48dp);
@@ -345,10 +345,12 @@ public class ReceiverSvc extends Service {
         SharedPreferences prefs = getSharedPreferences(EncrypText.class.getSimpleName(), MODE_PRIVATE);
         Notification.Builder builder = new Notification.Builder(this);
 
-        String name;
+        String name = null;
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
             name = ContactUtils.getContactName(getContentResolver(), address);
-        } else {
+        }
+
+        if(name == null) {
             name = address;
         }
 

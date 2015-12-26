@@ -70,7 +70,7 @@ public class DBUtils {
             }
         }
 
-        Cursor c = db.rawQuery("select * from conversations c where c.message_id >= ? order by c.message_id asc;", new String[]{String.valueOf(startFromMessageId)});
+        Cursor c = db.rawQuery("select * from conversations c where c.message_id > ? order by c.message_id asc;", new String[]{String.valueOf(startFromMessageId)});
 
         ArrayList<ConversationEntry> results = new ArrayList<>();
 
