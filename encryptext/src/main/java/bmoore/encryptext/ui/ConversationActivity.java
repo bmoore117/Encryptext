@@ -487,11 +487,11 @@ public class ConversationActivity extends AppCompatActivity {
             }
 
             conversationChanged = true;
-        } else if (address != null) //for jumping to new conv via notification
-        {
+        } else if (address != null) { //for jumping to new conv via notification
             adapter.clear();
             number = address;
             new LoadConversationTask().execute(new LoadConversationArgs(number, 0));
+            new LoadSecretKeyTask().execute(number);
             AutoCompleteTextView To = (AutoCompleteTextView) findViewById(R.id.phone);
             To.setVisibility(View.GONE);
             conversationChanged = false;
