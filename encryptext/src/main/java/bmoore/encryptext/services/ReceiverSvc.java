@@ -118,8 +118,6 @@ public class ReceiverSvc extends Service {
             Log.i(TAG, "AddMsgFragment Processing status " + processingStatus);
         }
 
-        //allows us to still text ourselves: now we only put in message parts that we don't have
-        // if(!Arrays.equals(thread.get(seq)[part], body))
         thread.get(seq)[part] = body;
 
         //check complete message & notify gui
@@ -648,7 +646,7 @@ public class ReceiverSvc extends Service {
             } else if (address != null) {
                 Log.i(TAG, "Removing held texts");
                 //Log.i(TAG, "Processing status " + processingStatus);
-                //processingStatus -= finishedTexts.get(address).size();
+                processingStatus -= finishedTexts.get(address).size();
                 //Log.i(TAG, "Processing status " + processingStatus);
                 finishedTexts.remove(address);
                 tryQuit();
