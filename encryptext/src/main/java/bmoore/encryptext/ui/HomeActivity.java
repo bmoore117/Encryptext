@@ -91,8 +91,7 @@ public class HomeActivity extends AppCompatActivity {
      * parameter is not used.
      * <p/>
      * This method sets the static variables active and created to true, to mark instance creation, and sets
-     * the GUI layout associated with this activity. It also reads all the preview files and displays their
-     * contents
+     * the GUI layout associated with this activity. It also reads all the previews and displays them
      *
      * @param savedInstanceState to restore previous states from.
      */
@@ -213,7 +212,7 @@ public class HomeActivity extends AppCompatActivity {
 
     /**
      * Sets the static variable created to false, to indicate that there
-     * are no more instances of this activity running. Also prompts the service to exit, if possible
+     * are no more instances of this activity running. Also prompts the services to exit, if possible
      */
     public void onDestroy() {
         created = false;

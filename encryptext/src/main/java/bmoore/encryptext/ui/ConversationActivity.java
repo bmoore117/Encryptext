@@ -440,15 +440,6 @@ public class ConversationActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
-    /**
-     * Hook method to handle new messages passed to this activity from the service.
-     * If a single message has been passed, this method extracts it from the intent and
-     * displays it. If multiple messages have been passed, this method extracts the ArrayList
-     * they were in, and constructs full ConversationEntries out of them, then displaying them.
-     * Third scenario use unclear.
-     *
-     * @param intent - the message this activity has been passed
-     */
     public void onNewIntent(Intent intent) {
         active = true;
         Bundle b = intent.getExtras();
@@ -539,13 +530,6 @@ public class ConversationActivity extends AppCompatActivity {
         super.onStop();
     }
 
-    /**
-     * Method to handle picking up any new messages when this activity is resumed from the launcher. Calls
-     * findShift to figure out how many messages have been sent since the file was last read, and then calls
-     * the files class to read the file with the shift amount passed in. Cancels any pending notifications
-     * for this conversation and informs the service to release any memory held by messages for this
-     * conversation, also setting the class newData marker to false
-     */
     public void onResume() {
         super.onResume();
         active = true;
@@ -646,11 +630,9 @@ public class ConversationActivity extends AppCompatActivity {
     }
 
     /**
-     * Method called by the GUI when the send message button is pressed. Hides the contact selection
-     * box, as a contact has been selected, displays the message to send, and calls the sendText method
-     * to handle the packetization. Writes the sent message to the database.
-     * <p/>
-     * Note: do something to show message sent: confirmation check?
+     * Method called by the GUI when the send message button is pressed. Handles the different cases
+     * that can arise if a user has selected a contact, or typed a phone number manually. Attempts to
+     * parse a phone number, and ensure that a key has been loaded, and then calls the performSend method
      *
      * @param v The button triggering the send
      */
@@ -675,10 +657,14 @@ public class ConversationActivity extends AppCompatActivity {
 
         if (secretKey != null && !"".equals(number)) { //contact with key selected
             performSend(text);
+
         } else if (secretKey == null && !"".equals(number)) { //contact with no key selected, still awaiting key exchange reply
             Toast.makeText(this, "Waiting for key exchange reply", Toast.LENGTH_SHORT).show();
+
         } else { //no contact so no loaded key
+
             Phonenumber.PhoneNumber temp = formatNumber(address);
+
             if (phoneNumberUtil.isValidNumber(temp)) {
                 number = phoneNumberUtil.format(temp, PhoneNumberUtil.PhoneNumberFormat.E164);
             } else {

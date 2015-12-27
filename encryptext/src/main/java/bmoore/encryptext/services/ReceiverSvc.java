@@ -73,7 +73,7 @@ public class ReceiverSvc extends Service {
     }
 
     /**
-     * Method to handle slotting a new PDU into the service holding data structures, and checking
+     * Method to handle slotting a new PDU into the data structures, and checking
      * if that PDU completes a logical message, as denoted by sequence number.
      * <p/>
      * First cancels any message expiration timer for the phone & sequence number combination that
@@ -241,7 +241,7 @@ public class ReceiverSvc extends Service {
     /**
      * Method to process all incoming PDUs in a bundle. Loops through bundle content,
      * creating an SmsMessage instance for each PDU so as to be able to read the originating
-     * phone number from, as well as reading a byte header and body for each PDU and then
+     * phone number from it, as well as reading a byte header and body for each PDU and then
      * calling addMsgFragment on each part.
      *
      * @param bundle - PDUs wrapped in an Android bundle
@@ -267,14 +267,12 @@ public class ReceiverSvc extends Service {
     }
 
     /**
-     * Method to retrieve the contact name associated with a phone number.
-     * Queries android contacts for name associated with number. If no
-     * results, returns a ConversationEntry with the number the message is
-     * from in the name slot
+     * Method to build a ConversationEntry object suitable for passing to the conversation activity.
      *
+     * @param seq - an integer representing the logical message #. Used to tell where to start reading from in onResume
      * @param address - a string representing a phone number
      * @param message - a string representing the body of a text message
-     * @return A ConversationEntry filled out with a name if possible
+     * @return A ConversationEntry filled out with a name, address, picture, message, and message number
      */
     private ConversationEntry buildThreadEntry(int seq, String address, String message) {
         Log.i(TAG, "Building thread entry");
