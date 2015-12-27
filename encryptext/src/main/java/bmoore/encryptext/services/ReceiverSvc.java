@@ -640,9 +640,12 @@ public class ReceiverSvc extends Service {
                 //Log.i(TAG, "Processing status " + processingStatus);
                 finishedTexts.remove(address);
                 tryQuit();
+            } else {
+                tryQuit();
             }
-        } else
+        } else {
             tryQuit();
+        }
     }
 
     /*public void removeHeldTexts(String number)
