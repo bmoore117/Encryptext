@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <android.support.v7.widget.Toolbar
+        android:id="@+id/about_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorPrimary"
+        android:elevation="4dp"
+        android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Light"/>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/about_toolbar">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/relativeLayout"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentStart="true"
+            android:layout_below="@+id/about_toolbar">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?android:attr/textAppearanceLarge"
+                android:text="What This App Is"
+                android:id="@+id/textView"
+                android:layout_alignParentStart="true"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?android:attr/textAppearanceSmall"
+                android:text="This app sends and receives encrypted text messages over GSM networks, using the ability to send a binary encoded SMS that Android provides for such networks. "
+                android:id="@+id/textView2"
+                android:layout_below="@+id/textView"
+                android:layout_alignParentStart="true"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?android:attr/textAppearanceLarge"
+                android:text="Known Limitations"
+                android:id="@+id/textView3"
+                android:layout_below="@+id/textView2"
+                android:layout_alignParentStart="true"
+                android:paddingTop="20dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?android:attr/textAppearanceSmall"
+                android:text="Android doesn&apos;t support a binary encoded SMS over CDMA networks, so this app only works for GSM carriers. In the US, that means this app doesn&apos;t work for people on Verizon or Sprint. People on AT&amp;T or T-Mobile it will work for. "
+                android:id="@+id/textView4"
+                android:layout_below="@+id/textView3"
+                android:layout_alignParentStart="true"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?android:attr/textAppearanceSmall"
+                android:text="Many smaller carriers (e.g. Straight Talk, Cricket) are simply re-sellers of access to the bigger carriers&apos; networks. If you use a smaller carrier, whether this app will work for you depends on the underlying network the carrier is selling you access to"
+                android:id="@+id/textView5"
+                android:layout_below="@+id/textView4"
+                android:layout_alignParentStart="true"
+                android:paddingTop="10dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?android:attr/textAppearanceSmall"
+                android:text="This app is also not guaranteed to work cross-carrier. For example texting an AT&amp;T user from a T-Mobile phone. Carriers can sometimes filter the binary SMS messages this app sends so that nothing appears for the person being texted."
+                android:id="@+id/textView6"
+                android:layout_below="@+id/textView5"
+                android:layout_alignParentStart="true"
+                android:paddingTop="10dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?android:attr/textAppearanceLarge"
+                android:text="Cryptography Used"
+                android:id="@+id/textView7"
+                android:layout_below="@+id/textView6"
+                android:layout_alignParentStart="true"
+                android:paddingTop="20dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?android:attr/textAppearanceSmall"
+                android:text="This app uses asymmetric and symmetric cryptography in tandem. On first run, the app generates a public and private elliptic curve key pair. Then, when you text someone you don&apos;t yet have a key for, you send them your public key. If they respond back with their public key, a shared secret is generated by combining the other person&apos;s public key with your own private key. This shared secret forms the basis of a symmetric (AES) encryption key that is then used for all subsequent messages."
+                android:id="@+id/textView8"
+                android:layout_below="@+id/textView7"
+                android:layout_alignParentStart="true"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?android:attr/textAppearanceLarge"
+                android:text="Privacy Protections Provided"
+                android:id="@+id/textView9"
+                android:layout_below="@+id/textView8"
+                android:paddingTop="20dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?android:attr/textAppearanceSmall"
+                android:text="This app hides the content of messages between you and the sender. It cannot hide the fact that you are talking to someone, or the phone number of the person you are talking to. "
+                android:id="@+id/textView10"
+                android:layout_below="@+id/textView9"/>
+
+        </RelativeLayout>
+
+
+    </ScrollView>
+
+
+
+</RelativeLayout>

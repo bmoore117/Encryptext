@@ -200,6 +200,9 @@ public class HomeActivity extends AppCompatActivity {
                 startActivity(new Intent(this, SettingsActivity.class));
                 return true;
 
+            case R.id.action_about:
+                startActivity(new Intent(this, AboutActivity.class));
+
             default:
                 // If we got here, the user's action was not recognized.
                 // Invoke the superclass to handle it.
