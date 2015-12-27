@@ -63,6 +63,7 @@ public class EncrypText extends Application {
     public static final int AES_ENCRYPTED_PDU = 2;
 
     public static final String UNRECOGNIZED_NUMBER_FORMAT = "Unrecognized format";
+    public static final String USE_HEADS_UP_NOTIFICATIONS = "useHeadsUpNotifications";
 
     private static final String TAG = "EncrypText";
 

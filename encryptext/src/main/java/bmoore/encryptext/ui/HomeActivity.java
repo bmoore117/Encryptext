@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -196,6 +197,7 @@ public class HomeActivity extends AppCompatActivity {
                 return true;
 
             case R.id.action_settings:
+                startActivity(new Intent(this, SettingsActivity.class));
                 return true;
 
             default:

@@ -448,7 +448,18 @@ public class ReceiverSvc extends Service {
         builder.setAutoCancel(true);
         builder.setDeleteIntent(del);
         builder.setLights(color, 1000, 3000);
-        builder.setPriority(Notification.PRIORITY_HIGH); //for heads up notification
+
+        SharedPreferences prefs = getSharedPreferences(EncrypText.class.getSimpleName(), MODE_PRIVATE);
+        if(prefs.contains(EncrypText.USE_HEADS_UP_NOTIFICATIONS)) {
+            boolean use = prefs.getBoolean(EncrypText.USE_HEADS_UP_NOTIFICATIONS, true);
+            if(use) {
+                builder.setPriority(Notification.PRIORITY_HIGH); //for heads up notification
+            }
+        } else {
+            builder.setPriority(Notification.PRIORITY_HIGH); //for heads up notification
+        }
+
+
         builder.setDefaults(Notification.DEFAULT_VIBRATE | Notification.DEFAULT_SOUND);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -491,6 +502,7 @@ public class ReceiverSvc extends Service {
             Log.i(TAG, "PassOrNotify Processing status " + processingStatus);
             makeNotification(item);
             ConversationActivity.setNewData();
+            HomeActivity.setNewPreviews();
         }
     }
 

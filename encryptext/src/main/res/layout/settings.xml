@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:app="http://schemas.android.com/apk/res-auto"
+              android:orientation="vertical"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent">
+
+    <android.support.v7.widget.Toolbar
+        android:id="@+id/settings_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorPrimary"
+        android:elevation="4dp"
+        android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Light"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="@string/heads_up_setting"
+        android:id="@+id/settings_use_heads_up"
+        android:layout_below="@+id/settings_toolbar"
+        android:layout_alignParentStart="true"
+        android:paddingStart="4dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="@string/heads_up_explanation"
+        android:id="@+id/settings_use_heads_up_detail"
+        android:layout_below="@+id/settings_use_heads_up"
+        android:layout_alignParentStart="true"
+        android:layout_alignEnd="@+id/settings_use_heads_up"
+        android:paddingStart="5dp"/>
+
+    <CheckBox
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/settings_use_heads_up_val"
+        android:layout_alignTop="@+id/settings_use_heads_up"
+        android:layout_alignParentEnd="true"
+        android:nestedScrollingEnabled="false"
+        android:onClick="onCheckBoxClicked"/>
+
+</RelativeLayout>
