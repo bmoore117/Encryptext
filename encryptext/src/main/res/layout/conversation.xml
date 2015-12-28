@@ -32,7 +32,7 @@
         android:text="@string/Send"
         android:layout_alignParentRight="true"
         android:layout_alignParentBottom="true"
-        android:onClick="@string/Send_Message"/>
+        android:onClick="sendMessage"/>
 
     <ListView
         android:id="@+id/conversation_list"
