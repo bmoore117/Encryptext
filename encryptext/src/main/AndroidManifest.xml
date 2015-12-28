@@ -60,20 +60,12 @@
 
         <service
             android:name=".services.ReceiverSvc"
-            android:exported="false"
-            android:permission="bmoore.example.encryptext.CALL_SERVICE">
-            <intent-filter>
-                <action android:name="com.encryptext.ReceiverSvc"/>
-            </intent-filter>
+            android:exported="false">
         </service>
 
         <service
             android:name=".services.SenderSvc"
-            android:exported="false"
-            android:permission="bmoore.example.encryptext.CALL_SERVICE">
-            <intent-filter>
-                <action android:name="com.encryptext.SenderSvc"/>
-            </intent-filter>
+            android:exported="false">
         </service>
 
         <receiver android:name=".receivers.Receiver">
