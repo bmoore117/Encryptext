@@ -107,7 +107,7 @@ public class DBUtils {
     public void storeEncryptedBlock(String address, byte[] block) {
         SQLiteDatabase db = manager.getWritableDatabase();
 
-        Cursor c = db.rawQuery("select count(*) from " + last_encrypted_blocks.class.getSimpleName() + " where " + last_encrypted_blocks.phone_number + " = ?", new String[]{address});
+        Cursor c = db.rawQuery("select count(*) from " + last_encrypted_blocks.table_name + " where " + last_encrypted_blocks.phone_number + " = ?", new String[]{address});
 
         int exists = 0;
         if (c.moveToFirst())
@@ -118,15 +118,15 @@ public class DBUtils {
         values.put(last_encrypted_blocks.encrypted_block, block);
         values.put(last_encrypted_blocks.phone_number, address);
 
-        //db.insertWithOnConflict(last_encrypted_blocks.class.getSimpleName(), null, values, SQLiteDatabase.CONFLICT_REPLACE);
+        //db.insertWithOnConflict(last_encrypted_blocks.table_name, null, values, SQLiteDatabase.CONFLICT_REPLACE);
 
         if (exists == 0) {
             values.put(last_encrypted_blocks.phone_number, address);
-            db.insert(last_encrypted_blocks.class.getSimpleName(), "null", values);
+            db.insert(last_encrypted_blocks.table_name, "null", values);
         } else {
             String whereClause = last_encrypted_blocks.phone_number + " = ?";
             String[] whereArg = new String[]{address};
-            db.update(last_encrypted_blocks.class.getSimpleName(), values, whereClause, whereArg);
+            db.update(last_encrypted_blocks.table_name, values, whereClause, whereArg);
         }
     }
 
@@ -134,7 +134,7 @@ public class DBUtils {
         SQLiteDatabase db = manager.getReadableDatabase();
 
         Cursor c = db.rawQuery("select " + last_encrypted_blocks.encrypted_block + " from "
-                + last_encrypted_blocks.class.getSimpleName() + " where " + last_encrypted_blocks.phone_number + " = ?", new String[]{address});
+                + last_encrypted_blocks.table_name + " where " + last_encrypted_blocks.phone_number + " = ?", new String[]{address});
 
         byte[] key = null;
         if (c.moveToFirst()) {
@@ -155,7 +155,7 @@ public class DBUtils {
         values.put(conversations.message, item.getMessage());
 
         //should return primary key of new row
-        return db.insert(conversations.class.getSimpleName(), "null", values);
+        return db.insert(conversations.table_name, "null", values);
     }
 
     public void confirmMessageSent(String time, long messageId) {
@@ -228,7 +228,7 @@ public class DBUtils {
         values.put(key_exchange_statuses.status_date, date);
 
         //should return primary key of new row
-        return db.insert(key_exchange_statuses.class.getSimpleName(), "null", values);
+        return db.insert(key_exchange_statuses.table_name, "null", values);
     }
 
     public void deleteKeyRequestEntry(String address) {
@@ -237,13 +237,13 @@ public class DBUtils {
         String where = key_exchange_statuses.phone_number + " = ?";
         String[] whereArgs = new String[]{address};
 
-        db.delete(key_exchange_statuses.class.getSimpleName(), where, whereArgs);
+        db.delete(key_exchange_statuses.table_name, where, whereArgs);
     }
 
     public List<KeyRequest> loadKeyRequests() {
         SQLiteDatabase db = manager.getReadableDatabase();
 
-        Cursor statuses = db.rawQuery("select * from " + key_exchange_statuses.class.getSimpleName(), null);
+        Cursor statuses = db.rawQuery("select * from " + key_exchange_statuses.table_name, null);
 
         ArrayList<KeyRequest> results = new ArrayList<>();
 
@@ -274,7 +274,7 @@ public class DBUtils {
     public long getKeyRequestsCount() {
         SQLiteDatabase db = manager.getReadableDatabase();
 
-        SQLiteStatement statement = db.compileStatement("select count(*) from " + key_exchange_statuses.class.getSimpleName());
+        SQLiteStatement statement = db.compileStatement("select count(*) from " + key_exchange_statuses.table_name);
 
         return statement.simpleQueryForLong();
     }
@@ -318,7 +318,7 @@ public class DBUtils {
 
 
         Cursor c = db.rawQuery("select " + column + " from " +
-                contact_keys.class.getSimpleName() + " where " + contact_keys.phone_number + " = ?", new String[]{address});
+                contact_keys.table_name + " where " + contact_keys.phone_number + " = ?", new String[]{address});
 
         byte[] keyBytes = null;
 
@@ -333,7 +333,7 @@ public class DBUtils {
     public long storeKeyBytes(String address, byte[] keyBytes, Cryptor.KeyTypes type) throws InvalidKeyTypeException {
         SQLiteDatabase db = manager.getWritableDatabase();
 
-        Cursor c = db.rawQuery("select count(*) from " + contact_keys.class.getSimpleName() + " where " + contact_keys.phone_number + " = ?", new String[]{address});
+        Cursor c = db.rawQuery("select count(*) from " + contact_keys.table_name + " where " + contact_keys.phone_number + " = ?", new String[]{address});
 
         int exists = 0;
         if (c.moveToFirst())
@@ -353,11 +353,11 @@ public class DBUtils {
 
         if (exists == 0) {
             values.put(contact_keys.phone_number, address);
-            return db.insert(contact_keys.class.getSimpleName(), "null", values);
+            return db.insert(contact_keys.table_name, "null", values);
         } else {
             String whereClause = contact_keys.phone_number + " = ?";
             String[] whereArg = new String[]{address};
-            return db.update(contact_keys.class.getSimpleName(), values, whereClause, whereArg);
+            return db.update(contact_keys.table_name, values, whereClause, whereArg);
         }
     }
 
@@ -374,7 +374,7 @@ public class DBUtils {
 
         String whereClause = contact_keys.phone_number + " = ?";
         String[] whereArg = new String[]{address};
-        db.update(contact_keys.class.getSimpleName(), values, whereClause, whereArg);
+        db.update(contact_keys.table_name, values, whereClause, whereArg);
     }
 
     public boolean checkKeyExists(String number, Cryptor.KeyTypes type) {
@@ -389,7 +389,7 @@ public class DBUtils {
             typeString = contact_keys.private_key;
 
 
-        Cursor c = db.rawQuery("select 1 from " + contact_keys.class.getSimpleName()
+        Cursor c = db.rawQuery("select 1 from " + contact_keys.table_name
                 + " where " + contact_keys.phone_number + " = ? and " + typeString + " is not null", new String[]{number});
 
         if (c.moveToFirst()) {

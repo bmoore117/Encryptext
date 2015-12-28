@@ -15,6 +15,8 @@ public class Schema {
                 "\tstatus_date text\n" +
                 ");";
 
+        public static final String table_name = "key_exchange_statuses";
+
         public static final String exchange_id = "exchange_id";
         public static final String phone_number = "phone_number";
         public static final String name = "name";
@@ -31,6 +33,8 @@ public class Schema {
                 "\tsecret_key blob,\n" +
                 "\tFOREIGN KEY(phone_number) REFERENCES key_exchange_statuses(phone_number)\n" +
                 ");";
+
+        public static final String table_name = "contact_keys";
 
         public static final String phone_number = "phone_number";
         public static final String public_key = "public_key";
@@ -49,6 +53,8 @@ public class Schema {
                 "\tFOREIGN KEY(phone_number) REFERENCES contact_keys(phone_number)\n" +
                 ");";
 
+        public static final String table_name = "conversations";
+
         public static final String message_id = "message_id";
         public static final String phone_number = "phone_number";
         public static final String name = "name";
@@ -62,6 +68,8 @@ public class Schema {
                 "encrypted_block blob," +
                 "FOREIGN KEY(phone_number) references conversations(phone_number)" +
                 ");";
+
+        public static final String table_name = "last_encrypted_blocks";
 
         public static final String phone_number = "phone_number";
         public static final String encrypted_block = "encrypted_block";
