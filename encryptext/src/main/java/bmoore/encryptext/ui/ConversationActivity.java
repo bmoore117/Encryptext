@@ -709,7 +709,7 @@ public class ConversationActivity extends AppCompatActivity {
         if (secretKey != null) {
             TextView view = (TextView) findViewById(R.id.conversation_encryption_status);
             view.setText(getString(R.string.messages_encrypted));
-            view.setTextColor(ContextCompat.getColor(ConversationActivity.this, R.color.lime_green));
+            view.setTextColor(ContextCompat.getColor(ConversationActivity.this, android.R.color.black));
         }
     }
 

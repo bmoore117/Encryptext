@@ -102,7 +102,7 @@ public class HomeActivity extends AppCompatActivity {
         Toolbar myToolbar = (Toolbar) findViewById(R.id.home_screen_toolbar);
         setSupportActionBar(myToolbar);
         ActionBar bar = getSupportActionBar();
-        bar.setIcon(R.mipmap.ic_stat_notification);
+        bar.setIcon(R.mipmap.ic_launcher);
 
         active = true;
         created = true;

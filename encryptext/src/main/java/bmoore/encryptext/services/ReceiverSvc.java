@@ -412,7 +412,7 @@ public class ReceiverSvc extends Service {
         }
 
         builder.setDefaults(Notification.DEFAULT_VIBRATE | Notification.DEFAULT_SOUND);
-        builder.setSmallIcon(R.mipmap.ic_stat_notification);
+        builder.setSmallIcon(R.mipmap.ic_launcher);
         builder.setLights(color, 1000, 3000);
 
         ((NotificationManager) getSystemService(ReceiverSvc.NOTIFICATION_SERVICE)
@@ -432,7 +432,7 @@ public class ReceiverSvc extends Service {
         PendingIntent p = PendingIntent.getService(this, 0, in, PendingIntent.FLAG_UPDATE_CURRENT);
         PendingIntent del = PendingIntent.getService(this, 1, d, PendingIntent.FLAG_UPDATE_CURRENT);
 
-        builder.setSmallIcon(R.mipmap.ic_stat_notification);
+        builder.setSmallIcon(R.mipmap.ic_launcher);
         builder.setContentTitle("Message from " + item.getName());
 
 
@@ -643,9 +643,11 @@ public class ReceiverSvc extends Service {
                 }
             } else if (address != null) {
                 Log.i(TAG, "Removing held texts");
-                //Log.i(TAG, "Processing status " + processingStatus);
-                processingStatus -= finishedTexts.get(address).size();
-                //Log.i(TAG, "Processing status " + processingStatus);
+
+                if(finishedTexts.get(address) != null) {
+                    processingStatus -= finishedTexts.get(address).size();
+                }
+
                 finishedTexts.remove(address);
                 tryQuit();
             } else {

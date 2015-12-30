@@ -36,6 +36,7 @@
         android:id="@+id/imageButton"
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true"
-        android:onClick="startConversationView"/>
+        android:onClick="startConversationView"
+        app:backgroundTint="@color/mint"/>
 
 </RelativeLayout>
