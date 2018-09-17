@@ -8,3 +8,9 @@ In order to avoid dealing with 7-bit character encoding issues, which is the def
 
 # Code
 Broadly speaking, the app breaks down into UI, and backing services. The main screen in the UI is the `Conversation` activity, and sending and receiving messages is handled by the two services `SenderSvc` and `ReceiverSvc`.
+
+# To-do
+Implement additional UI to let users know messages are encrypted
+
+# Update
+Some cell phone carriers block 8-bit PDUs, which are used in this app as a means of sending the encrypted data. Work on the app has thus been discontinued, although a conversion back to 7-bit PDUs should in theory enable the app to work across all carriers.
